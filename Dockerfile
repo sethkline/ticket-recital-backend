@@ -1,5 +1,5 @@
 # Use a specific version of node that is compatible with your project
-FROM node:16
+FROM node:20-alpine
 
 # Set the working directory in the container
 WORKDIR /app
