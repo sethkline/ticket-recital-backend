@@ -1,0 +1,69 @@
+{
+  "kind": "collectionType",
+  "collectionName": "events",
+  "info": {
+    "singularName": "event",
+    "pluralName": "events",
+    "displayName": "Event",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "time": {
+      "type": "time",
+      "required": true
+    },
+    "location": {
+      "type": "string",
+      "required": true,
+      "default": "Mechanicsburg Middle School"
+    },
+    "seats": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::seat.seat",
+      "mappedBy": "event"
+    },
+    "videos": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::video.video",
+      "mappedBy": "event"
+    },
+    "tickets": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::ticket.ticket",
+      "mappedBy": "event"
+    },
+    "ticket_sale_start": {
+      "type": "datetime"
+    },
+    "ticket_sale_end": {
+      "type": "datetime"
+    },
+    "advance_ticket_sale_start": {
+      "type": "datetime"
+    },
+    "ticket_price_in_cents": {
+      "type": "integer"
+    },
+    "is_current_year": {
+      "type": "boolean"
+    }
+  }
+}

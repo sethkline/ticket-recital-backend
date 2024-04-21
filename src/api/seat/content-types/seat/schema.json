@@ -1,0 +1,102 @@
+{
+  "kind": "collectionType",
+  "collectionName": "seats",
+  "info": {
+    "singularName": "seat",
+    "pluralName": "seats",
+    "displayName": "Seat",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event",
+      "inversedBy": "seats"
+    },
+    "number": {
+      "type": "string",
+      "required": true
+    },
+    "is_available": {
+      "type": "boolean"
+    },
+    "is_reserved": {
+      "type": "boolean"
+    },
+    "ticket": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::ticket.ticket",
+      "mappedBy": "seat"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "handicap_access": {
+      "type": "boolean"
+    },
+    "group_id": {
+      "type": "string"
+    },
+    "section": {
+      "type": "enumeration",
+      "enum": [
+        "left-label",
+        "left-wing",
+        "left-main",
+        "center-main",
+        "right-main",
+        "right-wing",
+        "right-label"
+      ]
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "regular",
+        "handicap",
+        "reserved"
+      ],
+      "default": "regular"
+    },
+    "row": {
+      "type": "enumeration",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V"
+      ]
+    },
+    "display_order": {
+      "type": "integer"
+    },
+    "reservation_timestamp": {
+      "type": "datetime"
+    }
+  }
+}

@@ -1,0 +1,54 @@
+erDiagram
+    Event {
+        int id PK
+        string title
+        string description
+        date date
+        string time
+        string location
+        int year
+    }
+    Seat {
+        int id PK
+        int event_id FK
+        string number
+        string row
+        boolean is_available
+        boolean is_reserved
+    }
+    Ticket {
+        int id PK
+        int user_id FK
+        int seat_id FK
+        int event_id FK
+        datetime purchase_date
+    }
+    User {
+        int id PK
+        string email
+        boolean is_staff
+        string login_token
+    }
+    Video {
+        int id PK
+        int event_id FK
+        string url
+        datetime access_start_date
+    }
+    Order {
+        int id PK
+        int user_id FK
+        float total_amount
+        string stripe_payment_id
+        string status
+        datetime created_at
+        datetime updated_at
+    }
+
+    Event ||--o{ Seat : "has"
+    Event ||--o{ Video : "has"
+    Seat ||--|{ Ticket : "reserved for"
+    User ||--o{ Ticket : "purchases"
+    Event ||--o{ Ticket : "includes"
+    User ||--o{ Order : "places"
+    Order ||--|{ Ticket : "contains"
