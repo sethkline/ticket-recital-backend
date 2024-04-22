@@ -17,6 +17,7 @@
     "@strapi/provider-email-mailgun": "^4.21.0",
     "@strapi/strapi": "4.20.5",
     "better-sqlite3": "8.6.0",
+    "pg": "^8.11.5",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "5.3.4",
