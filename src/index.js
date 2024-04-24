@@ -28,7 +28,7 @@ module.exports = {
       console.log('All seats have been deleted.');
     };
 
-    await deleteAllSeats()
+    // await deleteAllSeats()
 
     //socket io
       const httpServer = strapi.server.httpServer;
