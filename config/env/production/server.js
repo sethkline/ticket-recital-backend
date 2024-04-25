@@ -6,9 +6,13 @@ module.exports = ({ env }) => ({
   },
   admin: {
     path: '/admin',
+    build: {
+    serveAdminPanel: true,
+      backend: env('APP_URL')
+    }
     // Admin panel config
-    auth: {
-      secret: env('ADMIN_JWT_SECRET'),
-    },
+  },
+  auth: {
+    secret: env('ADMIN_JWT_SECRET'),
   },
 });
