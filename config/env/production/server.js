@@ -7,7 +7,7 @@ module.exports = ({ env }) => ({
   admin: {
     // Admin panel config
     auth: {
-      secret: env('ADMIN_JWT_SECRET'), // Ensure this environment variable is set!
+      secret: env('ADMIN_JWT_SECRET'),
     },
     // Uncomment the following line to serve the admin panel in production
     serveAdminPanel: true,
