@@ -5,11 +5,10 @@ module.exports = ({ env }) => ({
     keys: env.array('APP_KEYS')
   },
   admin: {
+    path: '/admin',
     // Admin panel config
     auth: {
       secret: env('ADMIN_JWT_SECRET'),
     },
-    // Uncomment the following line to serve the admin panel in production
-    serveAdminPanel: true,
   },
 });
