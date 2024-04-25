@@ -20,4 +20,5 @@ RUN yarn build
 EXPOSE 1337
 
 # Command to run your app
-CMD ["yarn", "start"]
+# CMD ["yarn", "start"]
+CMD ["yarn", "develop"]
