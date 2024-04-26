@@ -6,7 +6,6 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 module.exports = createCoreController('api::order.order', ({ strapi }) => ({
   async createPayment(ctx) {
     const { amount, customer, token, eventDetails } = ctx.request.body;
-
     try {
       // Charge the customer
       const charge = await stripe.charges.create({
@@ -50,6 +49,13 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       });
 
       await Promise.all(ticketsPromises);
+
+      // Send email
+      await strapi.plugins['email'].services.email.send({
+        to: ctx.state.user.email,
+        subject: 'Thanks for purchasing tickets for Reverence Studios Recital',
+        text: `Thank you ${ctx.state.user.firstname} for purchasing tickets for the 2024 Reverence Recital! Your total paid is $${amount}. Thank you for supporting Reverence Studios.`
+      });
 
       return ctx.send({
         message: 'Payment and order processing succeeded',
