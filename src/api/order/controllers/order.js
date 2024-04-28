@@ -24,7 +24,6 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       const charge = await stripe.charges.create({
         amount: amount * 100, // Convert amount to cents
         currency: 'usd',
-        customer: customer,
         description: `Order on ${new Date()} by ${ctx.state.user.username} ${ctx.state.user.email}`,
         source: token
       });
@@ -41,42 +40,52 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       });
 
  // Process each seat in each event and list seats
- const seatDetails = [];
- const ticketsPromises = seats.flatMap(async (event) => {
-   return event.seats.map(async (seatId) => {
-     // Check and update the seat availability
-     const seat = await strapi.entityService.findOne('api::seat.seat', seatId);
-     if (!seat.is_available) {
-       throw new Error('Seat is already booked');
-     }
-     await strapi.entityService.update('api::seat.seat', seatId, {
-       data: { is_available: false },
-     });
+ const ticketsPromises = seats.flatMap(event =>
+  event.seats.map(async seatId => {
+    const seat = await strapi.entityService.findOne('api::seat.seat', seatId, {
+      fields: ['is_available']
+    });
 
-     seatDetails.push({ event: event.eventId, seatId: seatId });
+    if (!seat.is_available) {
+      throw new Error('Seat is already booked');
+    }
 
-     // Create the ticket
-     return strapi.entityService.create('api::ticket.ticket', {
-       data: {
-         users_permissions_user: ctx.state.user.id,
-         event: event.eventId,
-         seat: seatId,
-         purchase_date: new Date(),
-         order: order.id,
-       }
-     });
-   });
- });
+    await strapi.entityService.update('api::seat.seat', seatId, {
+      data: { is_available: false },
+    });
 
-      await Promise.all(ticketsPromises);
+    // Create the ticket
+    const ticket = strapi.entityService.create('api::ticket.ticket', {
+      data: {
+        users_permissions_user: ctx.state.user.id,
+        event: event.eventId,
+        seat: seatId,
+        purchase_date: new Date(),
+        order: order.id,
+      }
+    });
 
- // Send email including seat details
- const seatList = seatDetails.map(detail => `Event ${detail.event}, Seat ${detail.seatId}`).join(", ");
- await strapi.plugins['email'].services.email.send({
-   to: ctx.state.user.email,
-   subject: 'Thanks for purchasing tickets for Reverence Studios Recital',
-   text: `Thank you ${ctx.state.user.firstname} for purchasing tickets and DVDs for the 2024 Reverence Recital! Your total paid is $${amount}. Here are your seats: ${seatList}.`
- });
+    // Save seat details for the email
+    return { event: event.eventId, seatId: seatId, ticketPromise: ticket };
+  })
+);
+
+// Resolve all promises and extract seat details for the email
+const results = await Promise.all(ticketsPromises);
+const seatDetails = results.map(result => {
+  // Await the ticket creation promise inside each result
+  return { event: result.event, seatId: result.seatId };
+});
+
+// Generate the seat list string for the email
+const seatList = seatDetails.map(detail => `Event ${detail.event}, Seat ${detail.seatId}`).join(", ");
+
+// Send email including seat details
+await strapi.plugins['email'].services.email.send({
+  to: ctx.state.user.email,
+  subject: 'Thanks for purchasing tickets for Reverence Studios Recital',
+  text: `Thank you ${ctx.state.user.firstname} for purchasing tickets and DVDs for the 2024 Reverence Recital! Your total paid is $${amount}. Here are your seats: ${seatList}.`
+});
 
       return ctx.send({
         message: 'Payment and order processing succeeded',
