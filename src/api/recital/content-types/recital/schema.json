@@ -1,0 +1,58 @@
+{
+  "kind": "collectionType",
+  "collectionName": "recitals",
+  "info": {
+    "singularName": "recital",
+    "pluralName": "recitals",
+    "displayName": "Recital",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "location": {
+      "type": "string",
+      "required": true
+    },
+    "ticket_sale_start": {
+      "type": "datetime"
+    },
+    "ticket_sale_end": {
+      "type": "datetime"
+    },
+    "is_pre_sale_active": {
+      "type": "boolean",
+      "default": false
+    },
+    "pre_sale_start": {
+      "type": "datetime"
+    },
+    "pre_sale_end": {
+      "type": "datetime"
+    },
+    "events": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::event.event",
+      "mappedBy": "recital"
+    },
+    "venue": {
+      "type": "string"
+    },
+    "show_title": {
+      "type": "string"
+    },
+    "can_sell_tickets": {
+      "type": "boolean"
+    }
+  }
+}

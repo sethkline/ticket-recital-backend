@@ -4,13 +4,11 @@
   "info": {
     "singularName": "ticket",
     "pluralName": "tickets",
-    "displayName": "Ticket",
-    "description": ""
+    "displayName": "Ticket"
   },
   "options": {
     "draftAndPublish": false
   },
-  "pluginOptions": {},
   "attributes": {
     "users_permissions_user": {
       "type": "relation",
@@ -32,6 +30,12 @@
     },
     "purchase_date": {
       "type": "datetime"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "tickets"
     }
   }
 }

@@ -1,0 +1,21 @@
+{
+  "kind": "singleType",
+  "collectionName": "early_access_phrases",
+  "info": {
+    "singularName": "early-access-phrase",
+    "pluralName": "early-access-phrases",
+    "displayName": "early_access_phrase"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "senior": {
+      "type": "password"
+    },
+    "volunteer": {
+      "type": "password"
+    }
+  }
+}

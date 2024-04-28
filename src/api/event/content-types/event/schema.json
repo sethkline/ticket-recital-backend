@@ -64,6 +64,12 @@
     },
     "is_current_year": {
       "type": "boolean"
+    },
+    "recital": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::recital.recital",
+      "inversedBy": "events"
     }
   }
 }

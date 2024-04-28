@@ -187,5 +187,51 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
             }
 
             return seats;
-          }
+          },
+
+          async updateAvailability(ctx) {
+            try {
+              const ids = ctx.request.body.ids;
+              const is_available = ctx.request.body.is_available;
+
+              if (!ids || !Array.isArray(ids)) {
+                return ctx.badRequest('Invalid input: Expected an array of IDs');
+              }
+
+              const results = [];
+              for (const id of ids) {
+                const result = await strapi.entityService.update('api::seat.seat', id, {
+                  data: { is_available },
+                });
+                results.push(result);
+              }
+
+              return ctx.send(results);
+            } catch (err) {
+              return ctx.badRequest('An error occurred:');
+            }
+          },
+          async updateHandicapAccess(ctx) {
+            try {
+              const ids = ctx.request.body.ids;
+              const handicap_access = ctx.request.body.handicap_access;
+
+              if (!ids || !Array.isArray(ids)) {
+                return ctx.badRequest('Invalid input: Expected an array of IDs');
+              }
+
+
+              const results = [];
+              for (const id of ids) {
+                const result = await strapi.entityService.update('api::seat.seat', id, {
+                  data: { handicap_access },
+                });
+                results.push(result);
+              }
+
+              return ctx.send(results);
+            } catch (err) {
+              return ctx.badRequest('An error occurred:');
+            }
+          },
         }));

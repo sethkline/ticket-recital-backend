@@ -841,6 +841,38 @@ export interface PluginPasswordlessToken extends Schema.CollectionType {
   };
 }
 
+export interface ApiEarlyAccessPhraseEarlyAccessPhrase
+  extends Schema.SingleType {
+  collectionName: 'early_access_phrases';
+  info: {
+    singularName: 'early-access-phrase';
+    pluralName: 'early-access-phrases';
+    displayName: 'early_access_phrase';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    senior: Attribute.Password;
+    volunteer: Attribute.Password;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    publishedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::early-access-phrase.early-access-phrase',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::early-access-phrase.early-access-phrase',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiEventEvent extends Schema.CollectionType {
   collectionName: 'events';
   info: {
@@ -880,6 +912,11 @@ export interface ApiEventEvent extends Schema.CollectionType {
     advance_ticket_sale_start: Attribute.DateTime;
     ticket_price_in_cents: Attribute.Integer;
     is_current_year: Attribute.Boolean;
+    recital: Attribute.Relation<
+      'api::event.event',
+      'manyToOne',
+      'api::recital.recital'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -916,6 +953,12 @@ export interface ApiOrderOrder extends Schema.CollectionType {
     total_amount: Attribute.Float;
     stripe_payment_id: Attribute.String;
     status: Attribute.String;
+    dvd_count: Attribute.Integer;
+    tickets: Attribute.Relation<
+      'api::order.order',
+      'oneToMany',
+      'api::ticket.ticket'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -926,6 +969,51 @@ export interface ApiOrderOrder extends Schema.CollectionType {
       Attribute.Private;
     updatedBy: Attribute.Relation<
       'api::order.order',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiRecitalRecital extends Schema.CollectionType {
+  collectionName: 'recitals';
+  info: {
+    singularName: 'recital';
+    pluralName: 'recitals';
+    displayName: 'Recital';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    title: Attribute.String & Attribute.Required;
+    description: Attribute.Text;
+    location: Attribute.String & Attribute.Required;
+    ticket_sale_start: Attribute.DateTime;
+    ticket_sale_end: Attribute.DateTime;
+    is_pre_sale_active: Attribute.Boolean & Attribute.DefaultTo<false>;
+    pre_sale_start: Attribute.DateTime;
+    pre_sale_end: Attribute.DateTime;
+    events: Attribute.Relation<
+      'api::recital.recital',
+      'oneToMany',
+      'api::event.event'
+    >;
+    venue: Attribute.String;
+    show_title: Attribute.String;
+    can_sell_tickets: Attribute.Boolean;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::recital.recital',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::recital.recital',
       'oneToOne',
       'admin::user'
     > &
@@ -1020,7 +1108,6 @@ export interface ApiTicketTicket extends Schema.CollectionType {
     singularName: 'ticket';
     pluralName: 'tickets';
     displayName: 'Ticket';
-    description: '';
   };
   options: {
     draftAndPublish: false;
@@ -1042,6 +1129,11 @@ export interface ApiTicketTicket extends Schema.CollectionType {
       'api::event.event'
     >;
     purchase_date: Attribute.DateTime;
+    order: Attribute.Relation<
+      'api::ticket.ticket',
+      'manyToOne',
+      'api::order.order'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1077,6 +1169,10 @@ export interface ApiVideoVideo extends Schema.CollectionType {
     >;
     url: Attribute.String;
     access_start_date: Attribute.DateTime;
+    format: Attribute.String & Attribute.DefaultTo<'digital'>;
+    shipped: Attribute.Boolean & Attribute.DefaultTo<false>;
+    tracking_number: Attribute.String;
+    sent: Attribute.Boolean & Attribute.DefaultTo<false>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1114,8 +1210,10 @@ declare module '@strapi/types' {
       'plugin::users-permissions.role': PluginUsersPermissionsRole;
       'plugin::users-permissions.user': PluginUsersPermissionsUser;
       'plugin::passwordless.token': PluginPasswordlessToken;
+      'api::early-access-phrase.early-access-phrase': ApiEarlyAccessPhraseEarlyAccessPhrase;
       'api::event.event': ApiEventEvent;
       'api::order.order': ApiOrderOrder;
+      'api::recital.recital': ApiRecitalRecital;
       'api::seat.seat': ApiSeatSeat;
       'api::ticket.ticket': ApiTicketTicket;
       'api::video.video': ApiVideoVideo;
