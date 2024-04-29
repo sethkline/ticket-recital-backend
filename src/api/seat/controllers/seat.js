@@ -38,7 +38,7 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
           reservation_timestamp: new Date(),
         },
       });
-      strapi.io.emit('seat-reserved', { seatId: id, isReserved: true, userId: ctx.state.user.id });
+      // strapi.io.emit('seat-reserved', { seatId: id, isReserved: true, userId: ctx.state.user.id });
       return ctx.send(updatedSeat);
     } else {
       if (!entity.is_reserved || (entity.user && entity.user.id !== ctx.state.user.id)) {

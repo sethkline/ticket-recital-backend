@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket</title>
+    <style>
+        .page {
+            width: 640px;
+            height: 360px;
+            background-size: cover;
+            background-repeat: no-repeat;
+            display: flex;
+            justify-content: flex-end;
+            align-items: flex-end;
+            color: black;
+            font-family: 'Arial', sans-serif;
+            font-size: 24px;
+            margin: 0;
+            padding: 20px;
+            page-break-after: always; /* Ensures each ticket starts on a new page */
+        }
+        .ticket-content {
+            text-align: left;
+            max-width: 100%;
+            font-size: xx-large;
+        }
+    </style>
+</head>
+<body>
+    <div class="page" style="background-image: url('{{backgroundImage}}');">
+        <div class=".ticket-content">
+            Date: <strong>{{date}}</strong><br>
+            Time: <strong>{{time}}</strong><br>
+            Row: <strong>{{row}}</strong><br>
+            Seat: <strong>{{seat}}</strong>
+        </div>
+    </div>
+</body>
+</html>

@@ -11,6 +11,18 @@ module.exports = {
         },
         "policies": []
       }
+    },
+    {
+      "method": "POST",
+      "path": "/orders/test-pdf",
+      "handler": "admin.testPDF",
+      "config": {
+        "auth": {
+          "strategy": "jwt"
+        },
+        "policies": [] // Add any specific policies if needed
+      }
     }
   ]
 }
+
