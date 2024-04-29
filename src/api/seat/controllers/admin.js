@@ -106,7 +106,7 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
       let seatNumbers = [];
 
       if (row === 'A') {
-        seatNumbers = [103, 101];
+        seatNumbers = [103, 101, 'HC2', 'HC1'];
       } else if (row === 'B') {
         seatNumbers = Array.from({ length: 5 }, (_, index) => 109 - 2 * index);
       } else if (row >= 'C' && row < 'I') {  // Use '<' to skip 'I'
@@ -121,7 +121,8 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
         seatNumbers = Array.from({ length: 14 }, (_, index) => 127 - 2 * index);
       } else if (row === 'V') {
         // Special case for row V
-        seatNumbers = Array.from({ length: 11 }, (_, index) => 121 - 2 * index);
+        let initialSeats = Array.from({ length: 6 }, (_, index) => 121 - 2 * index);  // From 121 to 109
+        seatNumbers = [...initialSeats, 'HC2', 'HC1', ...Array.from({ length: 4 }, (_, index) => 107 - 2 * index)];  // From 107 downwards
       }
 
       return seatNumbers.map((num, index) => ({
@@ -135,9 +136,11 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
     let seatNumbers = [];
 
     if (row === 'A') {
-        seatNumbers = [102, 104]; // Specific setup for Row A
+        seatNumbers = ['HC1', 'HC2' ,102, 104]; // Specific setup for Row A
     } else if (row === 'V') {
-        seatNumbers = generateSequence(102, 11, 2); // Special setup for Row V
+      let initialSeats = Array.from({ length: 4 }, (_, index) => 102 + 2 * index);
+      let finalSeats = Array.from({ length: 6 }, (_, index) => 110 - 2 * index);
+        seatNumbers = [...initialSeats, 'HC1', 'HC2', ...finalSeats]; // Special setup for Row V
     } else {
         let rowLetterIndex = row.charCodeAt(0) - 'B'.charCodeAt(0) + 1; // Start from row B
         if (row >= 'B' && row < 'L') {
@@ -165,10 +168,12 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
               // Example logic for center main section
               if (row === 'A') {
                 // Directly assign seat numbers for row A
-                seatNumbers = [207, 206, 205, 204, 203, 202, 201];
+                seatNumbers = [207, 206, 'HC1', 'HC2', 205, 204, 203, 'HC3', 'HC4', 202, 201];
               } else if (row === 'V') {
                 // Generate seat numbers from 211 to 201 for row V
-                seatNumbers = generateDescendingSequence(211, 11);
+                let initialSeats = generateDescendingSequence(211, 5);
+                let finalSeats = generateDescendingSequence(206, 6);
+                seatNumbers = [...initialSeats, 'HC1', 'HC2', 'HC3', ...finalSeats];
               } else {
                 // For rows B to U, assuming 14 seats per row starting from 214 to 201
                 seatNumbers = generateDescendingSequence(214, 14);

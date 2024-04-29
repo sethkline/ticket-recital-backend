@@ -11,6 +11,20 @@ module.exports = ({ env }) => ({
   async bootstrap({ strapi }) {
     console.log('Running bootstrap function...');
 
+    // const deleteAllSeats = async () => {
+    //   const seats = await strapi.entityService.findMany('api::seat.seat');
+    //   const tickets = await strapi.entityService.findMany('api::tickets.tickets');
+    //   for (const seat of seats) {
+    //     await strapi.entityService.delete('api::seat.seat', seat.id);
+    //   }
+    //   for (const ticket of tickets) {
+    //     await strapi.entityService.delete('api::ticket.ticket', ticket.id);
+    //   }
+    //   console.log('All seats have been deleted.');
+    // };
+
+    // await deleteAllSeats()
+
     const httpServer = strapi.server.httpServer;
     const io = require('socket.io')(httpServer, {
       cors: {
