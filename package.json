@@ -16,7 +16,7 @@
     "@strapi/plugin-i18n": "4.20.5",
     "@strapi/plugin-users-permissions": "4.20.5",
     "@strapi/provider-email-mailgun": "^4.24.0",
-    "@strapi/strapi": "4.20.5",
+    "@strapi/strapi": "4.24.0",
     "better-sqlite3": "8.6.0",
     "bull": "^4.12.2",
     "handlebars": "^4.7.8",
@@ -35,7 +35,7 @@
     "styled-components": "5.3.3"
   },
   "author": {
-    "name": "A Strapi developer"
+    "name": "Seth Kline"
   },
   "strapi": {
     "uuid": "3dac5ff3-c720-442b-93cd-d800e2b86aea"
