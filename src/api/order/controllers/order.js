@@ -20,17 +20,20 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
     // Verify if the charged amount matches the expected amount
     if (amount !== expectedAmount) {
+
+
+
+      // there is probably a problem with the system or someone is trying to pay less by hacking
+      if(process.env.NODE_ENV === 'production') {
+        await strapi.plugins['email'].services.email.send({
+          to: process.env.MAIL_FROM_ADDRESS,
+          from: 'alert@reverencestudios.com',
+          subject: 'Alert: Payment Failed',
+          text: `User ${ctx.state.user.firstname + ' ' + ctx.state.user.lastname} with email ${ctx.state.user.email} has tried to pay ${amount} but it is not the expected amount of ${expectedAmount}.`,
+        });
+      }
+
       return ctx.badRequest(`Invalid amount. Expected ${expectedAmount} but got ${amount}`);
-    }
-    // add a todo to also email kirsten about the problem with user name and email
-    // there is probably a problem with the system or someone is trying to pay less by hacking
-    if(process.env.NODE_ENV === 'production') {
-      await strapi.plugins['email'].services.email.send({
-        to: process.env.MAIL_FROM_ADDRESS,
-        from: 'alert@reverencestudios.com',
-        subject: 'Alert: Payment Failed',
-        text: `User ${ctx.state.user.firstname + ' ' + ctx.state.user.lastname} with email ${ctx.state.user.email} has tried to pay ${amount} but it is not the expected amount of ${expectedAmount}.`,
-      });
     }
 
     // create the charge with Stripe
@@ -90,8 +93,8 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         const introText = `Thank you for purchasing tickets for the Reverence Studios Recital. Here are the details of your tickets:\n\n`;
 
         const ticketsDetails = printInfo.map(ticket => {
-          const showType = ticket.backgroundImage === 'morning' ? 'Morning Show (10:30 AM)'  : 'Afternoon Show (12:30 PM)';
-          const doorsOpenTime = ticket.backgroundImage === 'morning' ? 'Doors open at 10:00 AM' : 'Doors open at 12:00 PM';
+          const showType = ticket.backgroundImage === 'morning' ? 'Morning Show (10:30 AM)'  : 'Afternoon Show (2:00 PM)';
+          const doorsOpenTime = ticket.backgroundImage === 'morning' ? 'Doors open at 10:00 AM' : 'Doors open at 1:30 PM';
 
           return `Date: ${ticket.date}\n${showType}\n${doorsOpenTime}\nRow: ${ticket.row}, Seat: ${ticket.seat}\n`;
         }).join('\n');
