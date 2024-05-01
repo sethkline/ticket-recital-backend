@@ -1,14 +1,12 @@
-// api/order/services/pdfService.js
+// // api/order/services/pdfService.js
 module.exports = {
   createPDF: async (htmlContent) => {
     console.log('HTML Content: ', htmlContent);
       const puppeteer = require('puppeteer');
 
+      const browser = await puppeteer.launch({args: ['--disable-web-security', '--no-sandbox', '--disable-setuid-sandbox']});
       try {
-        const browser = await puppeteer.launch({args: ['--disable-web-security']});
-        // your code
 
-      // const browser = await puppeteer.launch({args: ['--disable-web-security']});
       const page = await browser.newPage();
 
       page.on('console', message => {
@@ -23,7 +21,7 @@ module.exports = {
         return pdfBuffer;
       } catch (error) {
         console.error('Error generating PDF:', error);
-        // await browser.close();
+        await browser.close();
         throw error; // Re-throw the error to handle it further up the call stack if necessary
       }
   },

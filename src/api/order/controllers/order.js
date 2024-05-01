@@ -85,6 +85,20 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         })
       );
 
+      // helper function to create email of tickets used only becasuse pdf generation isn't working
+      const generateEmailTextContent = (printInfo) => {
+        const introText = `Thank you for purchasing tickets for the Reverence Studios Recital. Here are the details of your tickets:\n\n`;
+
+        const ticketsDetails = printInfo.map(ticket => {
+          const showType = ticket.time === '10:30 AM' ? 'Morning Show (10:30 AM)' : 'Afternoon Show (12:30 PM)';
+          const doorsOpenTime = ticket.time === '10:30' ? 'Doors open at 10:00 AM' : 'Doors open at 12:00 PM';
+
+          return `Date: ${ticket.date}\nDoors Open: ${doorsOpenTime}\nRow: ${ticket.row}, Seat: ${ticket.seat}\n`;
+        }).join('\n');
+
+        return introText + ticketsDetails;
+      };
+
       // helper function that creates a html template for a ticket
       const generateTicketHTML = async ({ date, time, row, seat, backgroundImage }) => {
         const templatePath = path.join(__dirname, '../templates/recitalTicketTemplate.hbs');
@@ -100,20 +114,24 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       const afternoonImagePath = `${process.env.APP_URL}/images/afternoon763x256.webp`;
       const morningImagePath = `${process.env.APP_URL}/images/morning763x256.webp`;
 
-      const htmlContent = await Promise.all(
-        printInfo.map(async (ticket) => {
-          return await generateTicketHTML({
-            date: ticket.date,
-            time: ticket.time,
-            row: ticket.row,
-            seat: ticket.seat,
-            backgroundImage: ticket.backgroundImage === 'afternoon' ? afternoonImagePath : morningImagePath
-          });
-    }))
+    //   const htmlContent = await Promise.all(
+    //     printInfo.map(async (ticket) => {
+    //       return await generateTicketHTML({
+    //         date: ticket.date,
+    //         time: ticket.time,
+    //         row: ticket.row,
+    //         seat: ticket.seat,
+    //         backgroundImage: ticket.backgroundImage === 'afternoon' ? afternoonImagePath : morningImagePath
+    //       });
+    // }))
 
-    const fullHtmlContent = htmlContent.join('');
+    // const fullHtmlContent = htmlContent.join('');
 
-      const fullPdfBuffer = await strapi.services['api::order.pdf-service'].createPDF(fullHtmlContent);
+      // skip making PDF because of puppeteer error
+      // const fullPdfBuffer = await strapi.services['api::order.pdf-service'].createPDF(fullHtmlContent);
+
+
+      const emailTextContent = generateEmailTextContent(printInfo);
 
       const mailgun = require('mailgun-js')({ apiKey: process.env.MAILGUN_API_KEY, domain: process.env.MAILGUN_DOMAIN });
 
@@ -121,8 +139,9 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         from: process.env.MAIL_FROM_ADDRESS,
         to: ctx.state.user.email,
         subject: 'Your Tickets for the Reverence Studios Recital',
-        text: 'Thanks for purchasing tickets for Reverence Studios Recital, your tickets are attached here',
-        attachment: new mailgun.Attachment({ data: fullPdfBuffer, filename: 'recital-tickets.pdf' })
+        // text: 'Thanks for purchasing tickets for Reverence Studios Recital, your tickets are attached here',
+        // attachment: new mailgun.Attachment({ data: fullPdfBuffer, filename: 'recital-tickets.pdf' })
+        text: emailTextContent
       };
 
       await mailgun.messages().send(emailData);
@@ -141,7 +160,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       return ctx.send({
         message: 'Payment and order processing succeeded',
         order: order,
-        tickets: fullPdfBuffer
+        // tickets: fullPdfBuffer
       });
     } catch (error) {
       if(process.env.NODE_ENV === 'production') {
