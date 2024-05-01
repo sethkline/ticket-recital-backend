@@ -52,7 +52,7 @@ module.exports = createCoreController('api::seat.seat', ({ strapi }) => ({
           reservation_timestamp: null,
         },
       });
-      strapi.io.emit('seat-unreserved', { seatId: id, isReserved: false, userId: ctx.state.user.id });
+      // strapi.io.emit('seat-unreserved', { seatId: id, isReserved: false, userId: ctx.state.user.id });
       return ctx.send(updatedSeat);
     }
   }
