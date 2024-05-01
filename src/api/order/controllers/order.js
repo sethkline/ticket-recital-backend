@@ -152,7 +152,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           to: process.env.MAIL_FROM_ADDRESS,
           from: 'success@reverencestudios.com',
           subject: `Tickets successfully purchased`,
-          text: `User ${ctx.state.user.firstname + ' ' + ctx.state.user.lastname} with email ${ctx.state.user.email} has purchased ${amount} and these seats ${seats} and ${dvds} DVDS`,
+          text: `User ${ctx.state.user.email} with id ${ctx.state.user.id} has purchased ${amount}. ${emailTextContent} and ${dvds} DVDS`,
         });
       }
 
@@ -160,7 +160,6 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       return ctx.send({
         message: 'Payment and order processing succeeded',
         order: order,
-        // tickets: fullPdfBuffer
       });
     } catch (error) {
       if(process.env.NODE_ENV === 'production') {
