@@ -45,24 +45,16 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         source: token
       });
 
-        // Proceed only if the Stripe charge was successful
-  if (charge.status === 'succeeded') {
-    // Create the order
-    const order = await strapi.entityService.create('api::order.order', {
-      data: {
-        users_permissions_user: ctx.state.user.id,
-        total_amount: amount,
-        status: 'paid',
-        stripe_payment_id: charge.id,
-        dvd_count: dvds
-      }
-    });
-
-  } else {
-    // Handle failed Stripe charge appropriately
-    throw new Error('Stripe charge failed');
-  }
-
+      // Create the order
+      const order = await strapi.entityService.create('api::order.order', {
+        data: {
+          users_permissions_user: ctx.state.user.id,
+          total_amount: amount,
+          status: 'paid',
+          stripe_payment_id: charge.id,
+          dvd_count: dvds
+        }
+      });
 
       // Create a ticket for each seat
       const ticketsPromises = seats.flatMap((event) =>
