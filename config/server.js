@@ -5,7 +5,7 @@ module.exports = ({ env }) => ({
     keys: env.array('APP_KEYS'),
   },
   logger: {
-    level: 'debug', // Levels are: fatal, error, warn, info, debug, trace, or silent
+    level: 'error', // Levels are: fatal, error, warn, info, debug, trace, or silent
     exposeInContext: true,
     requests: true,
   },
