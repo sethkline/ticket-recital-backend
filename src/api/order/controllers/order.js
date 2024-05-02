@@ -99,7 +99,11 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           return `Date: ${ticket.date}\n${showType}\n${doorsOpenTime}\nRow: ${ticket.row}, Seat: ${ticket.seat}\n`;
         }).join('\n');
 
-        return introText + ticketsDetails;
+        const link = 'https://recital.reverence.dance/profile';
+
+        const emailTextContent = introText + ticketsDetails + "\nDownload your tickets here: " + link;
+
+        return emailTextContent
       };
 
       // helper function that creates a html template for a ticket
