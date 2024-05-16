@@ -22,7 +22,18 @@ module.exports = {
         },
         "policies": [] // Add any specific policies if needed
       }
-    }
+    },
+    {
+      method: 'GET',
+      path: '/orders/csv-report',
+      handler: 'admin.csvReport',
+      config: {
+        "auth": {
+          "strategy": "jwt"
+        },
+        policies: [],
+      },
+    },
   ]
 }
 

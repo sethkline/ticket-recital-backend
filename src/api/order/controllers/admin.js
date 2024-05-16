@@ -1,6 +1,8 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
+const { parse } = require('json2csv');
+const JSZip = require('jszip');
 const NodeCache = require('node-cache');
 const myCache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
 const fs = require('fs');
@@ -109,5 +111,92 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     });
 
     ctx.send({ message: 'PDF generated and emailed successfully.' });
-  }
+  },
+
+  async csvReport(ctx) {
+    try {
+      // Fetch all orders with related users, tickets, seats, and events
+      const orders = await strapi.db.query('api::order.order').findMany({
+        populate: {
+          users_permissions_user: true,
+          tickets: {
+            populate: {
+              seat: true,
+              event: true,
+            },
+          },
+        },
+      });
+
+      // Prepare data for CSV
+      const reportData = orders.map(order => {
+        return order.tickets.map(ticket => ({
+          user_id: order.users_permissions_user.id,
+          name: order.users_permissions_user.first_name
+            ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
+            : order.users_permissions_user.email,
+          email: order.users_permissions_user.email,
+          seat_row: ticket.seat?.row || '',
+          seat_number: ticket.seat?.number || '',
+          recital: ticket.event?.title || '',
+          recital_time: ticket.event?.time || '',  // Assuming `time` is a field in your event schema
+        }));
+      }).flat();
+
+      // Separate data by recital times
+      const morningRecital = reportData.filter(ticket => ticket.recital === 'Morning Recital');
+      const afternoonRecital = reportData.filter(ticket => ticket.recital === 'Afternoon Recital');
+
+      // Function to group data by user
+      const groupByUser = (data) => {
+        const grouped = data.reduce((acc, ticket) => {
+          const userId = ticket.user_id;
+          if (!acc[userId]) {
+            acc[userId] = {
+              user_id: ticket.user_id,
+              name: ticket.name,
+              email: ticket.email,
+              seats: []
+            };
+          }
+          acc[userId].seats.push(`${ticket.seat_number}`);
+          return acc;
+        }, {});
+
+        return Object.values(grouped).map(user => ({
+          user_id: user.user_id,
+          name: user.name,
+          email: user.email,
+          seats: user.seats.join(', ')
+        }));
+      };
+
+      // Group data by user for each recital
+      const groupedMorningRecital = groupByUser(morningRecital);
+      const groupedAfternoonRecital = groupByUser(afternoonRecital);
+
+      // Convert JSON to CSV
+      const morningGroupedCsv = parse(groupedMorningRecital, { fields: ['user_id', 'name', 'email', 'seats'] });
+      const afternoonGroupedCsv = parse(groupedAfternoonRecital, { fields: ['user_id', 'name', 'email', 'seats'] });
+      const fullCsv = parse(reportData, { fields: ['user_id', 'name', 'email', 'seat_row', 'seat_number', 'recital', 'recital_time'] });
+
+      // Create a zip file with the CSV files
+      const zip = new JSZip();
+      zip.file('morning_recital.csv', morningGroupedCsv);
+      zip.file('afternoon_recital.csv', afternoonGroupedCsv);
+      zip.file('full_list.csv', fullCsv);
+
+      const content = await zip.generateAsync({ type: 'nodebuffer' });
+
+      // Set headers to prompt download
+      ctx.set('Content-Type', 'application/zip');
+      ctx.set('Content-Disposition', 'attachment; filename=orders-reports.zip');
+
+      // Send the zip file
+      ctx.send(content);
+    } catch (err) {
+      ctx.throw(500, err);
+    }
+  },
+
 }));

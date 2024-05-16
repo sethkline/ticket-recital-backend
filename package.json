@@ -21,6 +21,8 @@
     "bull": "^4.12.2",
     "handlebars": "^4.7.8",
     "ioredis": "^5.4.1",
+    "json2csv": "^6.0.0-alpha.2",
+    "jszip": "^3.10.1",
     "mailgun-js": "^0.22.0",
     "node-cache": "^5.1.2",
     "pg": "^8.11.5",
