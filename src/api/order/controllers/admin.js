@@ -175,16 +175,28 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       const groupedMorningRecital = groupByUser(morningRecital);
       const groupedAfternoonRecital = groupByUser(afternoonRecital);
 
+      // Filter orders with DVDs
+      const dvdOrders = orders.filter(order => order.dvd_count > 0).map(order => ({
+        user_id: order.users_permissions_user.id,
+        name: order.users_permissions_user.first_name
+          ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
+          : order.users_permissions_user.email,
+        email: order.users_permissions_user.email,
+        dvd_count: order.dvd_count,
+      }));
+
       // Convert JSON to CSV
       const morningGroupedCsv = parse(groupedMorningRecital, { fields: ['user_id', 'name', 'email', 'seats'] });
       const afternoonGroupedCsv = parse(groupedAfternoonRecital, { fields: ['user_id', 'name', 'email', 'seats'] });
       const fullCsv = parse(reportData, { fields: ['user_id', 'name', 'email', 'seat_row', 'seat_number', 'recital', 'recital_time'] });
+      const dvdOrdersCsv = parse(dvdOrders, { fields: ['user_id', 'name', 'email', 'dvd_count'] });
 
       // Create a zip file with the CSV files
       const zip = new JSZip();
       zip.file('morning_recital.csv', morningGroupedCsv);
       zip.file('afternoon_recital.csv', afternoonGroupedCsv);
       zip.file('full_list.csv', fullCsv);
+      zip.file('dvd_orders.csv', dvdOrdersCsv);
 
       const content = await zip.generateAsync({ type: 'nodebuffer' });
 
