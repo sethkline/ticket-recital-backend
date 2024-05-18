@@ -36,6 +36,10 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       return ctx.badRequest(`Invalid amount. Expected ${expectedAmount} but got ${amount}`);
     }
 
+    // check if ticket sales are over
+    return ctx.badRequest('Ticket salesa are over buy them at the door');
+
+
     // create the charge with Stripe
     try {
       const charge = await stripe.charges.create({
