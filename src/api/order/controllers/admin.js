@@ -18,7 +18,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     const { userEmail } = ctx.request.body;
 
     const imagePath = path.join(__dirname, 'templates', 'images', 'afternoon763x256.webp');
-    const generateTicket = async ({date, time, row, seat, backgroundImage,}) => {
+    const generateTicket = async ({ date, time, row, seat, backgroundImage }) => {
       // Correct the path by using path.join and __dirname to ensure the correct directory
       const templatePath = path.join(__dirname, '../templates/recitalTicketTemplate.hbs');
       const template = fs.readFileSync(templatePath, 'utf-8');
@@ -28,7 +28,6 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       const htmlOutput = compileTemplate({ date, time, row, seat, backgroundImage });
       return htmlOutput;
     };
-
 
     const templateData = {
       backgroundImage: `${process.env.APP_URL}/images/afternoon763x256.webp`,
@@ -64,7 +63,6 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     const htmlContent2 = await generateTicket(templateData2);
     const htmlContent3 = await generateTicket(templateData3);
 
-
     const htmlCombined = [
       htmlContent1,
       htmlContent2,
@@ -74,19 +72,18 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     const createCombinedTicketPDF = async (tickets) => {
       const htmlPromises = tickets.map(async (ticket, index) => {
         return generateTicket({
-            ...ticket,
-            backgroundImage: `${ticket.backgroundImage}?v=${Date.now() + index}`
+          ...ticket,
+          backgroundImage: `${ticket.backgroundImage}?v=${Date.now() + index}`
         });
-    });
+      });
 
-    const ticketHtmls = await Promise.all(htmlPromises);
+      const ticketHtmls = await Promise.all(htmlPromises);
 
-    const fullHtmlContent = ticketHtmls.join('<div style="page-break-after: always;"></div>');
+      const fullHtmlContent = ticketHtmls.join('<div style="page-break-after: always;"></div>');
       // Generate PDF from the full HTML content
       const pdfBuffer = await strapi.services['api::order.pdf-service'].createPDF(fullHtmlContent);
       return pdfBuffer;
     }
-
 
     const fullHtmlContent = htmlCombined.join('');
 
@@ -211,4 +208,142 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     }
   },
 
+  async sendRecitalEmails(ctx) {
+    try {
+      const { morningLink, afternoonLink, message, emailType } = ctx.request.body;
+
+      // Ensure all necessary fields are provided
+      if (!message || !emailType) {
+        return ctx.badRequest('Message and email type are required.');
+      }
+
+      // Validate email type
+      const validEmailTypes = ['morning', 'afternoon', 'both'];
+      if (!validEmailTypes.includes(emailType)) {
+        return ctx.badRequest('Invalid email type.');
+      }
+
+      // Validate required links based on email type
+      if (emailType === 'morning' && !morningLink) {
+        return ctx.badRequest('Morning link is required for morning email type.');
+      }
+      if (emailType === 'afternoon' && !afternoonLink) {
+        return ctx.badRequest('Afternoon link is required for afternoon email type.');
+      }
+      if (emailType === 'both' && (!morningLink || !afternoonLink)) {
+        return ctx.badRequest('Both morning and afternoon links are required for both email type.');
+      }
+
+      // Prepare email links
+      const bothLinks = `${morningLink ?? ''}, ${afternoonLink ?? ''}`.trim();
+
+      // Fetch all orders with related users and tickets
+      const orders = await strapi.db.query('api::order.order').findMany({
+        populate: {
+          users_permissions_user: true,
+          tickets: {
+            populate: {
+              event: true,
+            },
+          },
+        },
+      });
+
+      // Prepare data for email sending
+      const emailData = prepareEmailData(orders, emailType);
+
+      // Send emails
+      await sendEmails(emailData, { morningLink, afternoonLink, bothLinks, message, emailType });
+
+      ctx.send({ message: 'Emails sent successfully.' });
+    } catch (err) {
+      ctx.throw(500, err);
+    }
+  }
+
+
 }));
+
+// Prepare email data based on orders and email type
+function prepareEmailData(orders, emailType) {
+  const emailData = {};
+
+  orders.forEach(order => {
+    const { tickets, users_permissions_user } = order;
+    const userEmail = users_permissions_user.email;
+
+    if (!emailData[userEmail]) {
+      emailData[userEmail] = {
+        email: userEmail,
+        hasMorning: false,
+        hasAfternoon: false
+      };
+    }
+
+    tickets.forEach(ticket => {
+      if (ticket.event.title === 'Morning Recital') {
+        emailData[userEmail].hasMorning = true;
+      } else if (ticket.event.title === 'Afternoon Recital') {
+        emailData[userEmail].hasAfternoon = true;
+      }
+    });
+  });
+
+  return Object.values(emailData).filter(user => {
+    if (emailType === 'both') return user.hasMorning || user.hasAfternoon;
+    if (emailType === 'morning') return user.hasMorning;
+    if (emailType === 'afternoon') return user.hasAfternoon;
+  });
+}
+
+
+// Send emails to users
+async function sendEmails(emailData, links) {
+  const mailgun = require('mailgun-js')({
+    apiKey: process.env.MAILGUN_API_KEY,
+    domain: process.env.MAILGUN_DOMAIN
+  });
+
+  const sendEmail = async (to, subject, text) => {
+    const data = {
+      from: process.env.MAIL_FROM_ADDRESS,
+      to,
+      subject,
+      text
+    };
+    await mailgun.messages().send(data);
+  };
+
+  const emailPromises = [];
+
+  emailData.forEach(user => {
+    let subject, text;
+
+    if (links.emailType === 'both') {
+      if (user.hasMorning && user.hasAfternoon) {
+        subject = 'Recital Links';
+        text = `${links.message} Here are your links to both the Morning and Afternoon Recital videos: ${links.bothLinks}`;
+      } else if (user.hasMorning) {
+        subject = 'Morning Recital Link';
+        text = `${links.message} Here is your link to the Morning Recital video: ${links.morningLink}`;
+      } else if (user.hasAfternoon) {
+        subject = 'Afternoon Recital Link';
+        text = `${links.message} Here is your link to the Afternoon Recital video: ${links.afternoonLink}`;
+      }
+    } else if (links.emailType === 'morning' && user.hasMorning) {
+      subject = 'Morning Recital Link';
+      text = `${links.message} Here is your link to the Morning Recital video: ${links.morningLink}`;
+    } else if (links.emailType === 'afternoon' && user.hasAfternoon) {
+      subject = 'Afternoon Recital Link';
+      text = `${links.message} Here is your link to the Afternoon Recital video: ${links.afternoonLink}`;
+    }
+
+    if (subject && text) {
+      emailPromises.push(sendEmail(user.email, subject, text));
+    }
+  });
+
+  await Promise.all(emailPromises);
+}
+
+

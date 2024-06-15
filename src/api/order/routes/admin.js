@@ -34,6 +34,17 @@ module.exports = {
         policies: [],
       },
     },
+    {
+      "method": "POST",
+      "path": "/orders/send-recital-emails",
+      "handler": "admin.sendRecitalEmails",
+      "config": {
+        "auth": {
+          "strategy": "jwt"
+        },
+        "policies": []
+      }
+    }
   ]
 }
 
