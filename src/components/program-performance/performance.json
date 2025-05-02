@@ -1,0 +1,28 @@
+{
+  "collectionName": "components_program_performance_performances",
+  "info": {
+    "displayName": "Performance"
+  },
+  "options": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "order": {
+      "type": "integer"
+    },
+    "duration": {
+      "type": "string"
+    },
+    "performers": {
+      "type": "string"
+    },
+    "music": {
+      "type": "string"
+    },
+    "choreographer": {
+      "type": "string"
+    }
+  }
+}
