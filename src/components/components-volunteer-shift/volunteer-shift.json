@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_components_volunteer_shift_volunteer_shifts",
+  "info": {
+    "displayName": "Volunteer Shift"
+  },
+  "options": {},
+  "attributes": {
+    "start_time": {
+      "type": "datetime",
+      "required": true
+    },
+    "end_time": {
+      "type": "datetime",
+      "required": true
+    },
+    "filled": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "text"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "collectionName": "components_components_shared_branding_brandings",
+  "info": {
+    "displayName": "Branding",
+    "icon": "file"
+  },
+  "options": {},
+  "attributes": {
+    "logo": {
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ],
+      "type": "media",
+      "multiple": false
+    },
+    "font_family": {
+      "type": "string"
+    },
+    "colors": {
+      "displayName": "colors",
+      "type": "component",
+      "repeatable": false,
+      "component": "shared.colors"
+    }
+  }
+}

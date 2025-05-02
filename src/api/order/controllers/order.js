@@ -37,7 +37,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     }
 
     // check if ticket sales are over
-    return ctx.badRequest('Ticket salesa are over buy them at the door');
+    // return ctx.badRequest('Ticket sales are over buy them at the door');
 
 
     // create the charge with Stripe

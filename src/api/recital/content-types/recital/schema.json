@@ -53,6 +53,12 @@
     },
     "can_sell_tickets": {
       "type": "boolean"
+    },
+    "recital": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::studio.studio",
+      "inversedBy": "recitals"
     }
   }
 }

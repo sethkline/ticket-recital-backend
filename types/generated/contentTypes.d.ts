@@ -1004,6 +1004,11 @@ export interface ApiRecitalRecital extends Schema.CollectionType {
     venue: Attribute.String;
     show_title: Attribute.String;
     can_sell_tickets: Attribute.Boolean;
+    recital: Attribute.Relation<
+      'api::recital.recital',
+      'manyToOne',
+      'api::studio.studio'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1098,6 +1103,51 @@ export interface ApiSeatSeat extends Schema.CollectionType {
     createdBy: Attribute.Relation<'api::seat.seat', 'oneToOne', 'admin::user'> &
       Attribute.Private;
     updatedBy: Attribute.Relation<'api::seat.seat', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+  };
+}
+
+export interface ApiStudioStudio extends Schema.CollectionType {
+  collectionName: 'studios';
+  info: {
+    singularName: 'studio';
+    pluralName: 'studios';
+    displayName: 'Studio';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    name: Attribute.String & Attribute.Required;
+    slug: Attribute.UID & Attribute.Required;
+    owner: Attribute.Relation<
+      'api::studio.studio',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+    users_permissions_users: Attribute.Relation<
+      'api::studio.studio',
+      'oneToMany',
+      'plugin::users-permissions.user'
+    >;
+    recitals: Attribute.Relation<
+      'api::studio.studio',
+      'oneToMany',
+      'api::recital.recital'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::studio.studio',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::studio.studio',
+      'oneToOne',
+      'admin::user'
+    > &
       Attribute.Private;
   };
 }
@@ -1215,6 +1265,7 @@ declare module '@strapi/types' {
       'api::order.order': ApiOrderOrder;
       'api::recital.recital': ApiRecitalRecital;
       'api::seat.seat': ApiSeatSeat;
+      'api::studio.studio': ApiStudioStudio;
       'api::ticket.ticket': ApiTicketTicket;
       'api::video.video': ApiVideoVideo;
     }

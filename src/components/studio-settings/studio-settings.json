@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_studio_settings_studio_settings",
+  "info": {
+    "displayName": "Studio Settings"
+  },
+  "options": {},
+  "attributes": {
+    "timezone": {
+      "type": "string",
+      "default": "America/New_York"
+    },
+    "default_ticket_price": {
+      "type": "decimal"
+    },
+    "email_settings": {
+      "type": "json"
+    },
+    "notification_preferences": {
+      "type": "json"
+    }
+  }
+}
