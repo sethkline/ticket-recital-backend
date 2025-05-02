@@ -97,8 +97,8 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         const introText = `Thank you for purchasing tickets for the Reverence Studios Recital. Here are the details of your tickets:\n\n`;
 
         const ticketsDetails = printInfo.map(ticket => {
-          const showType = ticket.backgroundImage === 'morning' ? 'Morning Show (10:30 AM)'  : 'Afternoon Show (2:00 PM)';
-          const doorsOpenTime = ticket.backgroundImage === 'morning' ? 'Doors open at 10:00 AM' : 'Doors open at 1:30 PM';
+          const showType = ticket.backgroundImage === 'morning' ? 'Morning Show (10:00 AM)'  : 'Afternoon Show (1:30 PM)';
+          const doorsOpenTime = ticket.backgroundImage === 'morning' ? 'Doors open at 9:30 AM' : 'Doors open at 1:00 PM';
 
           return `Date: ${ticket.date}\n${showType}\n${doorsOpenTime}\nRow: ${ticket.row}, Seat: ${ticket.seat}\n`;
         }).join('\n');
