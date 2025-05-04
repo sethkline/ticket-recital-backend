@@ -23,10 +23,37 @@
       "type": "string"
     },
     "status": {
-      "type": "string"
+      "type": "enumeration",
+      "enum": ["pending", "processing", "fulfilled", "cancelled"],
+      "default": "pending"
     },
     "dvd_count": {
-      "type": "integer"
+      "type": "integer",
+      "default": 0
+    },
+    "digital_download_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "access_code": {
+      "type": "string"
+    },
+    "access_code_emailed": {
+      "type": "boolean",
+      "default": false
+    },
+    "media_status": {
+      "type": "enumeration",
+      "enum": ["pending", "processing", "fulfilled"],
+      "default": "pending"
+    },
+    "media_type": {
+      "type": "enumeration",
+      "enum": ["none", "dvd", "digital", "both"],
+      "default": "none"
+    },
+    "media_notes": {
+      "type": "text"
     },
     "tickets": {
       "type": "relation",

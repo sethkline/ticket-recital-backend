@@ -952,8 +952,21 @@ export interface ApiOrderOrder extends Schema.CollectionType {
     >;
     total_amount: Attribute.Float;
     stripe_payment_id: Attribute.String;
-    status: Attribute.String;
-    dvd_count: Attribute.Integer;
+    status: Attribute.Enumeration<
+      ['pending', 'processing', 'fulfilled', 'cancelled']
+    > &
+      Attribute.DefaultTo<'pending'>;
+    dvd_count: Attribute.Integer & Attribute.DefaultTo<0>;
+    digital_download_count: Attribute.Integer & Attribute.DefaultTo<0>;
+    access_code: Attribute.String;
+    access_code_emailed: Attribute.Boolean & Attribute.DefaultTo<false>;
+    media_status: Attribute.Enumeration<
+      ['pending', 'processing', 'fulfilled']
+    > &
+      Attribute.DefaultTo<'pending'>;
+    media_type: Attribute.Enumeration<['none', 'dvd', 'digital', 'both']> &
+      Attribute.DefaultTo<'none'>;
+    media_notes: Attribute.Text;
     tickets: Attribute.Relation<
       'api::order.order',
       'oneToMany',
