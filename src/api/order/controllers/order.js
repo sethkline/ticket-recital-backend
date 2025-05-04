@@ -1,6 +1,6 @@
 'use strict';
 const fs = require('fs');
-const path = require('path'); // Require the path module
+const path = require('path');
 const handlebars = require('handlebars');
 
 const { createCoreController } = require('@strapi/strapi').factories;
@@ -8,21 +8,26 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 module.exports = createCoreController('api::order.order', ({ strapi }) => ({
   async createPayment(ctx) {
-    const { amount, token, seats, dvds, printInfo } = ctx.request.body;
+    const { amount, token, seats, dvds = 0, digitalDownloads = 0, printInfo } = ctx.request.body;
     const TICKET_PRICE = 18;
     const DVD_PRICE = 30;
+    const DIGITAL_PRICE = 20;
+    const BUNDLE_DISCOUNT = 5;
     const SURCHARGE = 5;
 
     const totalTickets = seats.reduce((acc, event) => acc + event.seats.length, 0);
-    const expectedAmount = (totalTickets * TICKET_PRICE) + (dvds * DVD_PRICE) + SURCHARGE;
 
+    // Apply bundle discount if both DVD and digital are ordered
+    const bundleDiscount = (dvds > 0 && digitalDownloads > 0) ? BUNDLE_DISCOUNT : 0;
 
+    const expectedAmount = (totalTickets * TICKET_PRICE) +
+                          (dvds * DVD_PRICE) +
+                          (digitalDownloads * DIGITAL_PRICE) +
+                          SURCHARGE -
+                          bundleDiscount;
 
     // Verify if the charged amount matches the expected amount
     if (amount !== expectedAmount) {
-
-
-
       // there is probably a problem with the system or someone is trying to pay less by hacking
       if(process.env.NODE_ENV === 'production') {
         await strapi.plugins['email'].services.email.send({
@@ -36,11 +41,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       return ctx.badRequest(`Invalid amount. Expected ${expectedAmount} but got ${amount}`);
     }
 
-    // check if ticket sales are over
-    // return ctx.badRequest('Ticket sales are over buy them at the door');
-
-
-    // create the charge with Stripe
+    // Create the charge with Stripe
     try {
       const charge = await stripe.charges.create({
         amount: amount * 100,
@@ -49,14 +50,27 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         source: token
       });
 
+      // Determine the media type
+      let mediaType = 'none';
+      if (dvds > 0 && digitalDownloads > 0) {
+        mediaType = 'both';
+      } else if (dvds > 0) {
+        mediaType = 'dvd';
+      } else if (digitalDownloads > 0) {
+        mediaType = 'digital';
+      }
+
       // Create the order
       const order = await strapi.entityService.create('api::order.order', {
         data: {
           users_permissions_user: ctx.state.user.id,
           total_amount: amount,
-          status: 'paid',
+          status: 'pending',
           stripe_payment_id: charge.id,
-          dvd_count: dvds
+          dvd_count: dvds || 0,
+          digital_download_count: digitalDownloads || 0,
+          media_type: mediaType,
+          media_status: 'pending'
         }
       });
 
@@ -65,7 +79,6 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         event.seats.map(async (seatId) => {
           const seat = await strapi.entityService.findOne('api::seat.seat', seatId);
           if (!seat.is_available) {
-
             if(process.env.NODE_ENV === 'production') {
               await strapi.plugins['email'].services.email.send({
                 to: process.env.MAIL_FROM_ADDRESS,
@@ -92,7 +105,18 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         })
       );
 
-      // helper function to create email of tickets used only becasuse pdf generation isn't working
+      // Generate access code for digital downloads
+      let accessCode = null;
+      if (digitalDownloads > 0) {
+        accessCode = `DVL-${new Date().getFullYear()}-${String(order.id).padStart(4, '0')}`;
+        await strapi.entityService.update('api::order.order', order.id, {
+          data: {
+            access_code: accessCode
+          }
+        });
+      }
+
+      // Helper function to create email of tickets
       const generateEmailTextContent = (printInfo) => {
         const introText = `Thank you for purchasing tickets for the Reverence Studios Recital. Here are the details of your tickets:\n\n`;
 
@@ -103,44 +127,24 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           return `Date: ${ticket.date}\n${showType}\n${doorsOpenTime}\nRow: ${ticket.row}, Seat: ${ticket.seat}\n`;
         }).join('\n');
 
+        let mediaDetails = '';
+        if (dvds > 0) {
+          mediaDetails += `\nYou have ordered ${dvds} DVD(s). We will notify you when they are ready for pickup.\n`;
+        }
+
+        if (digitalDownloads > 0) {
+          mediaDetails += `\nYou have ordered a digital download of the recital. Your access code is: ${accessCode}\n`;
+          mediaDetails += `We will send you instructions on how to access your digital download after the recital.\n`;
+        }
+
         const link = 'https://recital.reverence.dance/profile';
 
-        const emailTextContent = introText + ticketsDetails + "\nDownload your tickets here: " + link;
+        const emailTextContent = introText + ticketsDetails + mediaDetails + "\nDownload your tickets here: " + link;
 
-        return emailTextContent
-      };
-
-      // helper function that creates a html template for a ticket
-      const generateTicketHTML = async ({ date, time, row, seat, backgroundImage }) => {
-        const templatePath = path.join(__dirname, '../templates/recitalTicketTemplate.hbs');
-        const template = fs.readFileSync(templatePath, 'utf-8');
-        const compileTemplate = handlebars.compile(template);
-
-        const htmlOutput = compileTemplate({ date, time, row, seat, backgroundImage });
-        return htmlOutput;
+        return emailTextContent;
       };
 
       await Promise.all(ticketsPromises);
-
-      const afternoonImagePath = `${process.env.APP_URL}/images/afternoon763x256.webp`;
-      const morningImagePath = `${process.env.APP_URL}/images/morning763x256.webp`;
-
-    //   const htmlContent = await Promise.all(
-    //     printInfo.map(async (ticket) => {
-    //       return await generateTicketHTML({
-    //         date: ticket.date,
-    //         time: ticket.time,
-    //         row: ticket.row,
-    //         seat: ticket.seat,
-    //         backgroundImage: ticket.backgroundImage === 'afternoon' ? afternoonImagePath : morningImagePath
-    //       });
-    // }))
-
-    // const fullHtmlContent = htmlContent.join('');
-
-      // skip making PDF because of puppeteer error
-      // const fullPdfBuffer = await strapi.services['api::order.pdf-service'].createPDF(fullHtmlContent);
-
 
       const emailTextContent = generateEmailTextContent(printInfo);
 
@@ -150,23 +154,19 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         from: process.env.MAIL_FROM_ADDRESS,
         to: ctx.state.user.email,
         subject: 'Your Tickets for the Reverence Studios Recital',
-        // text: 'Thanks for purchasing tickets for Reverence Studios Recital, your tickets are attached here',
-        // attachment: new mailgun.Attachment({ data: fullPdfBuffer, filename: 'recital-tickets.pdf' })
         text: emailTextContent
       };
 
       await mailgun.messages().send(emailData);
-
 
       if(process.env.NODE_ENV === 'production') {
         await strapi.plugins['email'].services.email.send({
           to: process.env.MAIL_FROM_ADDRESS,
           from: 'success@reverencestudios.com',
           subject: `Tickets successfully purchased`,
-          text: `User ${ctx.state.user.email} with id ${ctx.state.user.id} has purchased ${amount}. ${emailTextContent} and ${dvds} DVDS`,
+          text: `User ${ctx.state.user.email} with id ${ctx.state.user.id} has purchased ${amount}. ${emailTextContent}, ${dvds} DVDs, and ${digitalDownloads} digital downloads`,
         });
       }
-
 
       return ctx.send({
         message: 'Payment and order processing succeeded',
@@ -199,5 +199,110 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     });
 
     return ctx.send(tickets);
+  },
+
+  async findUserMediaOrders(ctx) {
+    const user = ctx.state.user;
+
+    if (!user) {
+      return ctx.badRequest('No authentication found.');
+    }
+
+    // Find orders with DVD or digital downloads
+    const orders = await strapi.db.query('api::order.order').findMany({
+      where: {
+        users_permissions_user: user.id,
+        $or: [
+          { dvd_count: { $gt: 0 } },
+          { digital_download_count: { $gt: 0 } },
+          { media_type: { $in: ['dvd', 'digital', 'both'] } }
+        ]
+      }
+    });
+
+    // Format orders for the frontend
+    const formattedOrders = orders.map(order => ({
+      id: order.id,
+      orderDate: order.createdAt,
+      hasDvd: order.dvd_count > 0 || order.media_type === 'dvd' || order.media_type === 'both',
+      dvdCount: order.dvd_count || 0,
+      hasDigital: order.digital_download_count > 0 || order.media_type === 'digital' || order.media_type === 'both',
+      accessCode: order.access_code,
+      mediaStatus: order.media_status || 'pending'
+    }));
+
+    return ctx.send(formattedOrders);
+  },
+
+  async validateAccessCode(ctx) {
+    const { accessCode } = ctx.request.body;
+
+    if (!accessCode) {
+      return ctx.badRequest('Access code is required');
+    }
+
+    try {
+      // Find the order with this access code
+      const order = await strapi.db.query('api::order.order').findOne({
+        where: { access_code: accessCode },
+        populate: ['users_permissions_user']
+      });
+
+      // If no order found or the order doesn't have digital download or not fulfilled
+      if (!order ||
+          (order.digital_download_count <= 0 && order.media_type !== 'digital' && order.media_type !== 'both')) {
+        return ctx.send({ valid: false, message: 'Invalid access code or no digital content available' });
+      }
+
+      // Only check status if we're enforcing it
+      if (order.media_status !== 'fulfilled') {
+        return ctx.send({ valid: false, message: 'Your digital content is not yet ready for viewing' });
+      }
+
+      // Determine which recital type to show based on their ticket purchases
+      let recitalType = 'morning'; // Default
+
+      // Find tickets for this order to determine which recital they attended
+      const tickets = await strapi.entityService.findMany('api::ticket.ticket', {
+        filters: { order: order.id },
+        populate: ['event']
+      });
+
+      if (tickets && tickets.length > 0) {
+        // Check if they have afternoon tickets
+        for (const ticket of tickets) {
+          if (ticket.event &&
+              ticket.event.title &&
+              ticket.event.title.toLowerCase().includes('afternoon')) {
+            recitalType = 'afternoon';
+            break;
+          }
+        }
+      }
+
+      // Log this access attempt (optional)
+      try {
+        await strapi.entityService.create('api::access-log.access-log', {
+          data: {
+            order: order.id,
+            access_code: accessCode,
+            ip_address: ctx.request.ip,
+            user_agent: ctx.request.headers['user-agent'],
+            access_time: new Date()
+          }
+        });
+      } catch (logError) {
+        // Just log the error but don't fail the request
+        console.error('Error logging access attempt:', logError);
+      }
+
+      return ctx.send({
+        valid: true,
+        recitalType: recitalType
+      });
+    } catch (error) {
+      console.error('Error validating access code:', error);
+      return ctx.badRequest('An error occurred while validating the access code');
+    }
   }
 }));
