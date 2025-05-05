@@ -5,7 +5,7 @@ module.exports = ({ env }) => ({
     keys: env.array('APP_KEYS'),
   },
   logger: {
-    level: 'error', // Levels are: fatal, error, warn, info, debug, trace, or silent
+    level: 'info', // Levels are: fatal, error, warn, info, debug, trace, or silent
     exposeInContext: true,
     requests: true,
   },
@@ -36,7 +36,8 @@ module.exports = ({ env }) => ({
             await strapi.entityService.update('api::seat.seat', seat.id, {
               data: {
                 is_reserved: false,
-                reservation_timestamp: null
+                reservation_timestamp: null,
+                user: null
               }
             });
             console.log(`Seat ${seat.id} is now available again.`);
