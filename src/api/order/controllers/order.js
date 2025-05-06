@@ -304,5 +304,39 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       console.error('Error validating access code:', error);
       return ctx.badRequest('An error occurred while validating the access code');
     }
+  },
+
+  async findByEmail(ctx) {
+    const { email } = ctx.request.body;
+
+    if (!email) {
+      return ctx.badRequest('Email is required');
+    }
+
+    try {
+      // Find the user by email
+      const user = await strapi.query('plugin::users-permissions.user').findOne({
+        where: { email },
+      });
+
+      if (!user) {
+        // For security reasons, return empty array rather than error
+        return [];
+      }
+
+      // First, get the tickets for this user with all necessary relations
+      const tickets = await strapi.entityService.findMany('api::ticket.ticket', {
+        filters: {
+          users_permissions_user: user.id
+        },
+        populate: ['event', 'seat', 'order'],
+      });
+
+      return tickets;
+    } catch (error) {
+      strapi.log.error('Error finding tickets by email:', error);
+      return ctx.badRequest('Error finding tickets');
+    }
   }
+
 }));
