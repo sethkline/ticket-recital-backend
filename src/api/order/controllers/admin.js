@@ -51,11 +51,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       seat: '23'
     };
 
-    const templateDataCombined = [
-      templateData,
-      templateData2,
-      templateData3,
-    ]
+    const templateDataCombined = [templateData, templateData2, templateData3];
 
     // const pdfBuffers = []
 
@@ -63,11 +59,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     const htmlContent2 = await generateTicket(templateData2);
     const htmlContent3 = await generateTicket(templateData3);
 
-    const htmlCombined = [
-      htmlContent1,
-      htmlContent2,
-      htmlContent3
-    ]
+    const htmlCombined = [htmlContent1, htmlContent2, htmlContent3];
 
     const createCombinedTicketPDF = async (tickets) => {
       const htmlPromises = tickets.map(async (ticket, index) => {
@@ -83,7 +75,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       // Generate PDF from the full HTML content
       const pdfBuffer = await strapi.services['api::order.pdf-service'].createPDF(fullHtmlContent);
       return pdfBuffer;
-    }
+    };
 
     const fullHtmlContent = htmlCombined.join('');
 
@@ -119,52 +111,101 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           tickets: {
             populate: {
               seat: true,
-              event: true,
-            },
-          },
-        },
+              event: true
+            }
+          }
+        }
       });
 
-      // Prepare data for CSV
-      const reportData = orders.map(order => {
-        return order.tickets.map(ticket => ({
-          user_id: order.users_permissions_user.id,
-          name: order.users_permissions_user.first_name
-            ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
-            : order.users_permissions_user.email,
-          email: order.users_permissions_user.email,
+      // Fetch ALL tickets, including those not associated with orders
+      const allTickets = await strapi.db.query('api::ticket.ticket').findMany({
+        populate: {
+          seat: true,
+          event: true,
+          users_permissions_user: true, // Add this to get user info for manually created tickets
+          order: true
+        }
+      });
+
+      // Prepare data from orders
+      const orderData = orders
+        .map((order) => {
+          return order.tickets.map((ticket) => ({
+            user_id: order.users_permissions_user?.id || 'N/A',
+            name: order.users_permissions_user?.first_name
+              ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
+              : order.users_permissions_user?.email || 'Manual Entry',
+            email: order.users_permissions_user?.email || 'N/A',
+            seat_row: ticket.seat?.row || '',
+            seat_number: ticket.seat?.number || '',
+            recital: ticket.event?.title || '',
+            recital_time: ticket.event?.time || '',
+            ticket_id: ticket.id,
+            order_id: order.id,
+            manual_entry: false
+          }));
+        })
+        .flat();
+
+      // Create a set of ticket IDs that are already included from orders
+      const existingTicketIds = new Set(orderData.map((item) => item.ticket_id));
+
+      // Get tickets that are not associated with orders or have a different user than the order
+      const manualTickets = allTickets
+        .filter((ticket) => !ticket.order || !existingTicketIds.has(ticket.id))
+        .map((ticket) => ({
+          user_id: ticket.users_permissions_user?.id || 'Manual',
+          name: ticket.users_permissions_user?.first_name
+            ? `${ticket.users_permissions_user.first_name} ${ticket.users_permissions_user.last_name}`
+            : ticket.users_permissions_user?.email || ticket.manual_name || 'Manual Entry',
+          email: ticket.users_permissions_user?.email || ticket.manual_email || 'N/A',
           seat_row: ticket.seat?.row || '',
           seat_number: ticket.seat?.number || '',
           recital: ticket.event?.title || '',
-          recital_time: ticket.event?.time || '',  // Assuming `time` is a field in your event schema
+          recital_time: ticket.event?.time || '',
+          ticket_id: ticket.id,
+          order_id: 'Manual',
+          manual_entry: true
         }));
-      }).flat();
+
+      // Combine all ticket data
+      const reportData = [...orderData, ...manualTickets];
 
       // Separate data by recital times
-      const morningRecital = reportData.filter(ticket => ticket.recital === 'Morning Recital');
-      const afternoonRecital = reportData.filter(ticket => ticket.recital === 'Afternoon Recital');
+      const morningRecital = reportData.filter((ticket) => ticket.recital === 'Morning Recital');
+      const afternoonRecital = reportData.filter((ticket) => ticket.recital === 'Afternoon Recital');
 
       // Function to group data by user
       const groupByUser = (data) => {
         const grouped = data.reduce((acc, ticket) => {
-          const userId = ticket.user_id;
-          if (!acc[userId]) {
-            acc[userId] = {
+          // Use a composite key that includes email to handle manual entries better
+          const key =
+            ticket.user_id !== 'Manual' && ticket.user_id !== 'N/A'
+              ? ticket.user_id
+              : `manual-${ticket.email}-${ticket.name}`;
+
+          if (!acc[key]) {
+            acc[key] = {
               user_id: ticket.user_id,
               name: ticket.name,
               email: ticket.email,
-              seats: []
+              seats: [],
+              manual_entry: ticket.manual_entry
             };
           }
-          acc[userId].seats.push(`${ticket.seat_number}`);
+          // Only add the seat if it has valid data
+          if (ticket.seat_number) {
+            acc[key].seats.push(`${ticket.seat_row}${ticket.seat_number}`);
+          }
           return acc;
         }, {});
 
-        return Object.values(grouped).map(user => ({
+        return Object.values(grouped).map((user) => ({
           user_id: user.user_id,
           name: user.name,
           email: user.email,
-          seats: user.seats.join(', ')
+          seats: user.seats.join(', '),
+          manual_entry: user.manual_entry ? 'Yes' : 'No'
         }));
       };
 
@@ -173,20 +214,30 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       const groupedAfternoonRecital = groupByUser(afternoonRecital);
 
       // Filter orders with DVDs
-      const dvdOrders = orders.filter(order => order.dvd_count > 0).map(order => ({
-        user_id: order.users_permissions_user.id,
-        name: order.users_permissions_user.first_name
-          ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
-          : order.users_permissions_user.email,
-        email: order.users_permissions_user.email,
-        dvd_count: order.dvd_count,
-      }));
+      const dvdOrders = orders
+        .filter((order) => order.dvd_count > 0)
+        .map((order) => ({
+          user_id: order.users_permissions_user?.id || 'N/A',
+          name: order.users_permissions_user?.first_name
+            ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
+            : order.users_permissions_user?.email || 'Manual Entry',
+          email: order.users_permissions_user?.email || 'N/A',
+          dvd_count: order.dvd_count
+        }));
 
       // Convert JSON to CSV
-      const morningGroupedCsv = parse(groupedMorningRecital, { fields: ['user_id', 'name', 'email', 'seats'] });
-      const afternoonGroupedCsv = parse(groupedAfternoonRecital, { fields: ['user_id', 'name', 'email', 'seats'] });
-      const fullCsv = parse(reportData, { fields: ['user_id', 'name', 'email', 'seat_row', 'seat_number', 'recital', 'recital_time'] });
-      const dvdOrdersCsv = parse(dvdOrders, { fields: ['user_id', 'name', 'email', 'dvd_count'] });
+      const morningGroupedCsv = parse(groupedMorningRecital, {
+        fields: ['user_id', 'name', 'email', 'seats', 'manual_entry']
+      });
+      const afternoonGroupedCsv = parse(groupedAfternoonRecital, {
+        fields: ['user_id', 'name', 'email', 'seats', 'manual_entry']
+      });
+      const fullCsv = parse(reportData, {
+        fields: ['user_id', 'name', 'email', 'seat_row', 'seat_number', 'recital', 'recital_time', 'manual_entry']
+      });
+      const dvdOrdersCsv = parse(dvdOrders, {
+        fields: ['user_id', 'name', 'email', 'dvd_count']
+      });
 
       // Create a zip file with the CSV files
       const zip = new JSZip();
@@ -243,10 +294,10 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           users_permissions_user: true,
           tickets: {
             populate: {
-              event: true,
-            },
-          },
-        },
+              event: true
+            }
+          }
+        }
       });
 
       // Prepare data for email sending
@@ -260,15 +311,13 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       ctx.throw(500, err);
     }
   }
-
-
 }));
 
 // Prepare email data based on orders and email type
 function prepareEmailData(orders, emailType) {
   const emailData = {};
 
-  orders.forEach(order => {
+  orders.forEach((order) => {
     const { tickets, users_permissions_user } = order;
     const userEmail = users_permissions_user.email;
 
@@ -280,7 +329,7 @@ function prepareEmailData(orders, emailType) {
       };
     }
 
-    tickets.forEach(ticket => {
+    tickets.forEach((ticket) => {
       if (ticket.event.title === 'Morning Recital') {
         emailData[userEmail].hasMorning = true;
       } else if (ticket.event.title === 'Afternoon Recital') {
@@ -289,13 +338,12 @@ function prepareEmailData(orders, emailType) {
     });
   });
 
-  return Object.values(emailData).filter(user => {
+  return Object.values(emailData).filter((user) => {
     if (emailType === 'both') return user.hasMorning || user.hasAfternoon;
     if (emailType === 'morning') return user.hasMorning;
     if (emailType === 'afternoon') return user.hasAfternoon;
   });
 }
-
 
 // Send emails to users
 async function sendEmails(emailData, links) {
@@ -316,7 +364,7 @@ async function sendEmails(emailData, links) {
 
   const emailPromises = [];
 
-  emailData.forEach(user => {
+  emailData.forEach((user) => {
     let subject, text;
 
     if (links.emailType === 'both') {
@@ -345,5 +393,3 @@ async function sendEmails(emailData, links) {
 
   await Promise.all(emailPromises);
 }
-
-
