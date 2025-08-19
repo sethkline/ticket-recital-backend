@@ -5,6 +5,8 @@ const handlebars = require('handlebars');
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const b2Service = require('../../../services/backblaze-b2');
+const videoMetadata = require('../../../../config/video-metadata');
 
 module.exports = createCoreController('api::order.order', ({ strapi }) => ({
   async createPayment(ctx) {
@@ -235,74 +237,390 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
   },
 
   async validateAccessCode(ctx) {
-    const { accessCode } = ctx.request.body;
-
-    if (!accessCode) {
-      return ctx.badRequest('Access code is required');
-    }
-
     try {
-      // Find the order with this access code
-      const order = await strapi.db.query('api::order.order').findOne({
-        where: { access_code: accessCode },
-        populate: ['users_permissions_user']
+      const { accessCode } = ctx.request.body;
+      
+      if (!accessCode) {
+        return ctx.badRequest('Access code is required');
+      }
+
+      // Find order with this access code
+      const order = await strapi.entityService.findMany('api::order.order', {
+        filters: { 
+          access_code: accessCode,
+          $or: [
+            { digital_download_count: { $gt: 0 } },
+            { media_type: 'digital' },
+            { media_type: 'both' }
+          ]
+        },
+        populate: ['users_permissions_user'],
       });
 
-      // If no order found or the order doesn't have digital download or not fulfilled
-      if (!order ||
-          (order.digital_download_count <= 0 && order.media_type !== 'digital' && order.media_type !== 'both')) {
-        return ctx.send({ valid: false, message: 'Invalid access code or no digital content available' });
+      if (!order || order.length === 0) {
+        return ctx.unauthorized('Invalid access code');
       }
 
-      // Only check status if we're enforcing it
-      if (order.media_status !== 'fulfilled') {
-        return ctx.send({ valid: false, message: 'Your digital content is not yet ready for viewing' });
+      const validOrder = order[0];
+
+      // Check if order is fulfilled
+      if (validOrder.media_status !== 'fulfilled') {
+        return ctx.badRequest('Your digital download is not yet available');
       }
 
-      // Determine which recital type to show based on their ticket purchases
-      let recitalType = 'morning'; // Default
-
-      // Find tickets for this order to determine which recital they attended
+      // Determine recital type based on tickets
+      let recitalType = 'both'; // Default to both
       const tickets = await strapi.entityService.findMany('api::ticket.ticket', {
-        filters: { order: order.id },
+        filters: { order: validOrder.id },
         populate: ['event']
       });
 
       if (tickets && tickets.length > 0) {
-        // Check if they have afternoon tickets
-        for (const ticket of tickets) {
-          if (ticket.event &&
-              ticket.event.title &&
-              ticket.event.title.toLowerCase().includes('afternoon')) {
-            recitalType = 'afternoon';
-            break;
-          }
+        const hasAfternoon = tickets.some(ticket => 
+          ticket.event && ticket.event.title && 
+          ticket.event.title.toLowerCase().includes('afternoon')
+        );
+        const hasMorning = tickets.some(ticket => 
+          ticket.event && ticket.event.title && 
+          ticket.event.title.toLowerCase().includes('morning')
+        );
+        
+        if (hasAfternoon && !hasMorning) {
+          recitalType = 'afternoon';
+        } else if (hasMorning && !hasAfternoon) {
+          recitalType = 'morning';
         }
       }
 
-      // Log this access attempt (optional)
+      // Log access attempt
       try {
         await strapi.entityService.create('api::access-log.access-log', {
           data: {
-            order: order.id,
-            access_code: accessCode,
-            ip_address: ctx.request.ip,
-            user_agent: ctx.request.headers['user-agent'],
-            access_time: new Date()
-          }
+            order: validOrder.id,
+            accessedAt: new Date(),
+            ipAddress: ctx.request.ip,
+          },
         });
       } catch (logError) {
-        // Just log the error but don't fail the request
         console.error('Error logging access attempt:', logError);
       }
 
       return ctx.send({
         valid: true,
-        recitalType: recitalType
+        orderId: validOrder.id,
+        purchaseDate: validOrder.createdAt,
+        recitalType: recitalType,
       });
     } catch (error) {
       console.error('Error validating access code:', error);
-      return ctx.badRequest('An error occurred while validating the access code');
+      return ctx.internalServerError('Failed to validate access code');
+    }
+  },
+
+  async getVideoUrls(ctx) {
+    try {
+      const { accessCode, videoType = 'full' } = ctx.request.body;
+      
+      // Validate access code first
+      const order = await strapi.entityService.findMany('api::order.order', {
+        filters: { 
+          access_code: accessCode,
+          $or: [
+            { digital_download_count: { $gt: 0 } },
+            { media_type: 'digital' },
+            { media_type: 'both' }
+          ]
+        },
+      });
+
+      if (!order || order.length === 0) {
+        return ctx.unauthorized('Invalid access code');
+      }
+
+      const validOrder = order[0];
+
+      if (validOrder.media_status !== 'fulfilled') {
+        return ctx.badRequest('Your digital download is not yet available');
+      }
+
+      const videos = videoMetadata.recital2025;
+      let responseData = {};
+
+      if (videoType === 'full') {
+        // Generate URLs for both quality options
+        const hqUrl = await b2Service.getSignedUrl(
+          videos.fullRecital.highQuality.filePath,
+          86400 // 24 hour expiry
+        );
+        const standardUrl = await b2Service.getSignedUrl(
+          videos.fullRecital.standardQuality.filePath,
+          86400 // 24 hour expiry
+        );
+        
+        responseData = {
+          type: 'full',
+          fullRecital: {
+            highQuality: {
+              ...videos.fullRecital.highQuality,
+              downloadUrl: hqUrl,
+            },
+            standardQuality: {
+              ...videos.fullRecital.standardQuality,
+              downloadUrl: standardUrl,
+            },
+            expiresAt: new Date(Date.now() + 86400 * 1000).toISOString(),
+          }
+        };
+      } else if (videoType === 'individual') {
+        // Generate URLs for all individual dances
+        const danceUrls = await Promise.all(
+          videos.dances.map(async (dance) => {
+            const url = await b2Service.getSignedUrl(
+              dance.filePath,
+              86400 // 24 hour expiry
+            );
+            
+            return {
+              ...dance,
+              downloadUrl: url,
+            };
+          })
+        );
+
+        responseData = {
+          type: 'individual',
+          videos: danceUrls,
+          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString(),
+        };
+      } else if (videoType === 'both') {
+        // Generate URLs for everything
+        const hqUrl = await b2Service.getSignedUrl(
+          videos.fullRecital.highQuality.filePath,
+          86400
+        );
+        const standardUrl = await b2Service.getSignedUrl(
+          videos.fullRecital.standardQuality.filePath,
+          86400
+        );
+
+        const danceUrls = await Promise.all(
+          videos.dances.map(async (dance) => {
+            const url = await b2Service.getSignedUrl(
+              dance.filePath,
+              86400
+            );
+            
+            return {
+              ...dance,
+              downloadUrl: url,
+            };
+          })
+        );
+
+        responseData = {
+          type: 'both',
+          fullRecital: {
+            highQuality: {
+              ...videos.fullRecital.highQuality,
+              downloadUrl: hqUrl,
+            },
+            standardQuality: {
+              ...videos.fullRecital.standardQuality,
+              downloadUrl: standardUrl,
+            }
+          },
+          individualDances: danceUrls,
+          expiresAt: new Date(Date.now() + 86400 * 1000).toISOString(),
+        };
+      }
+
+      // Log access attempt
+      try {
+        await strapi.entityService.create('api::access-log.access-log', {
+          data: {
+            order: validOrder.id,
+            accessedAt: new Date(),
+            ipAddress: ctx.request.ip,
+            videoAccessed: videoType,
+          },
+        });
+      } catch (logError) {
+        console.error('Error logging video access:', logError);
+      }
+
+      return ctx.send(responseData);
+    } catch (error) {
+      console.error('Error generating video URLs:', error);
+      return ctx.internalServerError('Failed to generate download links');
+    }
+  },
+
+  async getDownloadHistory(ctx) {
+    try {
+      const { accessCode } = ctx.params;
+      
+      // Find order
+      const order = await strapi.entityService.findMany('api::order.order', {
+        filters: { access_code: accessCode },
+      });
+
+      if (!order || order.length === 0) {
+        return ctx.notFound('Order not found');
+      }
+
+      const accessLogs = await strapi.entityService.findMany('api::access-log.access-log', {
+        filters: { order: order[0].id },
+        sort: { accessedAt: 'desc' },
+        limit: 50,
+      });
+
+      return ctx.send({
+        orderId: order[0].id,
+        totalAccesses: accessLogs.length,
+        recentAccesses: accessLogs.slice(0, 10),
+      });
+    } catch (error) {
+      console.error('Error fetching download history:', error);
+      return ctx.internalServerError('Failed to fetch download history');
+    }
+  },
+
+  async generateAccessCodes(ctx) {
+    try {
+      // Check admin permission
+      if (!ctx.state.user || ctx.state.user.role.type !== 'admin') {
+        return ctx.forbidden('Admin access required');
+      }
+
+      // Find all digital orders without access codes
+      const orders = await strapi.entityService.findMany('api::order.order', {
+        filters: {
+          $or: [
+            { digital_download_count: { $gt: 0 } },
+            { media_type: 'digital' },
+            { media_type: 'both' }
+          ],
+          access_code: null,
+          media_status: 'fulfilled',
+        },
+        populate: ['users_permissions_user'],
+      });
+
+      const updatedOrders = [];
+
+      for (const order of orders) {
+        const accessCode = this.generateUniqueAccessCode();
+        
+        await strapi.entityService.update('api::order.order', order.id, {
+          data: { access_code: accessCode },
+        });
+
+        updatedOrders.push({
+          orderId: order.id,
+          accessCode,
+        });
+
+        // Send email to customer with access code
+        if (order.users_permissions_user?.email) {
+          try {
+            await strapi.plugins['email'].services.email.send({
+              to: order.users_permissions_user.email,
+              subject: 'Your Digital Download is Ready!',
+              html: `
+                <h2>Your Recital Recording is Available</h2>
+                <p>Thank you for your purchase! Your digital download is now ready.</p>
+                <p><strong>Access Code:</strong> ${accessCode}</p>
+                <p>Visit <a href="${process.env.FRONTEND_URL}/watch-recital">our viewing page</a> and enter your access code to watch or download the recital.</p>
+                <p>This access code will remain valid until December 31, 2025.</p>
+                <p>If you have any issues, please contact support@reverencestudios.com</p>
+              `,
+            });
+          } catch (emailError) {
+            console.error('Error sending email:', emailError);
+          }
+        }
+      }
+
+      return ctx.send({
+        message: `Generated ${updatedOrders.length} access codes`,
+        orders: updatedOrders,
+      });
+    } catch (error) {
+      console.error('Error generating access codes:', error);
+      return ctx.internalServerError('Failed to generate access codes');
+    }
+  },
+
+  generateUniqueAccessCode() {
+    const year = new Date().getFullYear();
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const numberPart = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    return `DVL-${year}-${randomPart}${numberPart}`;
+  },
+
+  async createTestOrder(ctx) {
+    try {
+      const userId = ctx.state.user.id;
+      const { orderType = 'digital' } = ctx.request.body;
+      
+      // Generate unique access code
+      const accessCode = this.generateUniqueAccessCode();
+      
+      // Create test order based on type
+      let orderData = {
+        users_permissions_user: userId,
+        status: 'completed',
+        stripe_payment_id: `test_${orderType}_${Date.now()}`,
+        media_status: 'fulfilled',
+        access_code: accessCode,
+      };
+      
+      switch (orderType) {
+        case 'digital':
+          orderData.total_amount = 20;
+          orderData.dvd_count = 0;
+          orderData.digital_download_count = 1;
+          orderData.media_type = 'digital';
+          break;
+        case 'both':
+          orderData.total_amount = 45;
+          orderData.dvd_count = 1;
+          orderData.digital_download_count = 1;
+          orderData.media_type = 'both';
+          break;
+        case 'dvd':
+          orderData.total_amount = 30;
+          orderData.dvd_count = 1;
+          orderData.digital_download_count = 0;
+          orderData.media_type = 'dvd';
+          break;
+        default:
+          return ctx.badRequest('Invalid order type. Use: digital, both, or dvd');
+      }
+      
+      const order = await strapi.entityService.create('api::order.order', {
+        data: orderData,
+        populate: ['users_permissions_user'],
+      });
+      
+      return ctx.send({
+        message: 'Test order created successfully',
+        order: {
+          id: order.id,
+          accessCode: order.access_code,
+          mediaType: order.media_type,
+          mediaStatus: order.media_status,
+          totalAmount: order.total_amount,
+          userEmail: order.users_permissions_user?.email,
+        },
+        testInstructions: {
+          frontend: `Go to http://localhost:3000/watch-recital-updated and use access code: ${order.access_code}`,
+          api: `curl -X POST http://localhost:1337/api/orders/validate-access-code -H "Content-Type: application/json" -d '{"accessCode":"${order.access_code}"}'`
+        }
+      });
+    } catch (error) {
+      console.error('Error creating test order:', error);
+      return ctx.internalServerError('Failed to create test order');
     }
   },
 

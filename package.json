@@ -9,15 +9,16 @@
     "build": "strapi build",
     "strapi": "strapi"
   },
-  "devDependencies": {},
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.864.0",
+    "@aws-sdk/s3-request-presigner": "^3.864.0",
     "@strapi/plugin-cloud": "4.20.5",
     "@strapi/plugin-email": "^4.24.0",
     "@strapi/plugin-i18n": "4.20.5",
     "@strapi/plugin-users-permissions": "4.20.5",
     "@strapi/provider-email-mailgun": "^4.24.0",
     "@strapi/strapi": "4.24.0",
-    "better-sqlite3": "8.6.0",
+    "better-sqlite3": "^8.6.0",
     "bull": "^4.12.2",
     "handlebars": "^4.7.8",
     "ioredis": "^5.4.1",
