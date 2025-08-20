@@ -240,11 +240,32 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     try {
       const { accessCode } = ctx.request.body;
       
+      console.log('[ValidateAccessCode] Request received with code:', accessCode);
+      
       if (!accessCode) {
+        console.log('[ValidateAccessCode] ERROR: No access code provided');
         return ctx.badRequest('Access code is required');
       }
 
-      // Find order with this access code
+      // First, try to find ANY order with this access code for debugging
+      const anyOrder = await strapi.entityService.findMany('api::order.order', {
+        filters: { access_code: accessCode },
+        populate: ['users_permissions_user'],
+      });
+      
+      if (anyOrder && anyOrder.length > 0) {
+        console.log('[ValidateAccessCode] Found order with access code:', {
+          orderId: anyOrder[0].id,
+          mediaType: anyOrder[0].media_type,
+          mediaStatus: anyOrder[0].media_status,
+          digitalCount: anyOrder[0].digital_download_count,
+          dvdCount: anyOrder[0].dvd_count,
+        });
+      } else {
+        console.log('[ValidateAccessCode] ERROR: No order found with access code:', accessCode);
+      }
+
+      // Find order with this access code AND digital requirements
       const order = await strapi.entityService.findMany('api::order.order', {
         filters: { 
           access_code: accessCode,
@@ -258,13 +279,19 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       });
 
       if (!order || order.length === 0) {
+        console.log('[ValidateAccessCode] ERROR: Order not valid for digital download');
+        if (anyOrder && anyOrder.length > 0) {
+          console.log('[ValidateAccessCode] Order exists but is not a digital order');
+        }
         return ctx.unauthorized('Invalid access code');
       }
 
       const validOrder = order[0];
+      console.log('[ValidateAccessCode] Valid digital order found, checking fulfillment status');
 
       // Check if order is fulfilled
       if (validOrder.media_status !== 'fulfilled') {
+        console.log('[ValidateAccessCode] ERROR: Media not fulfilled. Status:', validOrder.media_status);
         return ctx.badRequest('Your digital download is not yet available');
       }
 
