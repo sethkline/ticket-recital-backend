@@ -33,7 +33,7 @@ async function testVolunteerEndpoint() {
         <li>For best results, right-click and "Save As" to download large files</li>
       </ul>
       
-      <p>If you have any issues accessing your download, please contact us at support@reverencestudios.com</p>
+      <p>If you have any issues accessing your download, please contact us at ${process.env.MAIL_REPLY_TO_ADDRESS}</p>
       <p>Thank you again for your wonderful contribution to our recital!</p>
     `
   };

@@ -541,7 +541,7 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
                 <p><strong>Access Code:</strong> ${accessCode}</p>
                 <p>Visit <a href="${process.env.FRONTEND_URL}/watch-recital">our viewing page</a> and enter your access code to watch or download the recital.</p>
                 <p>This access code will remain valid until December 31, 2025.</p>
-                <p>If you have any issues, please contact support@reverencestudios.com</p>
+                <p>If you have any issues, please contact ${process.env.MAIL_REPLY_TO_ADDRESS}</p>
               `,
             });
           } catch (emailError) {
