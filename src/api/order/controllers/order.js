@@ -120,7 +120,11 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
       // Helper function to create email of tickets
       const generateEmailTextContent = (printInfo) => {
-        const introText = `Thank you for purchasing tickets for the Reverence Studios Recital. Here are the details of your tickets:\n\n`;
+        const customerName = ctx.state.user.first_name 
+          ? `${ctx.state.user.first_name} ${ctx.state.user.last_name || ''}`.trim()
+          : ctx.state.user.email.split('@')[0];
+        
+        const introText = `Dear ${customerName},\n\nThank you for purchasing tickets for the Reverence Studios Recital. Here are the details of your tickets:\n\n`;
 
         const ticketsDetails = printInfo.map(ticket => {
           const showType = ticket.backgroundImage === 'morning' ? 'Morning Show (10:00 AM)'  : 'Afternoon Show (1:30 PM)';
@@ -523,11 +527,16 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
         // Send email to customer with access code
         if (order.users_permissions_user?.email) {
           try {
+            const customerName = order.users_permissions_user.first_name 
+              ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name || ''}`.trim()
+              : order.users_permissions_user.email.split('@')[0];
+            
             await strapi.plugins['email'].services.email.send({
               to: order.users_permissions_user.email,
               subject: 'Your Digital Download is Ready!',
               html: `
-                <h2>Your Recital Recording is Available</h2>
+                <h2>Dear ${customerName},</h2>
+                <p>Your Recital Recording is Available!</p>
                 <p>Thank you for your purchase! Your digital download is now ready.</p>
                 <p><strong>Access Code:</strong> ${accessCode}</p>
                 <p>Visit <a href="${process.env.FRONTEND_URL}/watch-recital">our viewing page</a> and enter your access code to watch or download the recital.</p>

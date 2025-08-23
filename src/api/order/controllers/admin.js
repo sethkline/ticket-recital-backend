@@ -314,18 +314,28 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
 
   async createVolunteerAccess(ctx) {
     try {
-      // Check admin permission
-      if (!ctx.state.user || ctx.state.user.role.type !== 'admin') {
-        return ctx.forbidden('Admin access required');
+      console.log('createVolunteerAccess called');
+      console.log('Request body:', ctx.request.body);
+      
+      // Check if user is authenticated
+      if (!ctx.state.user) {
+        console.log('No authenticated user');
+        return ctx.unauthorized('Authentication required');
       }
 
-      const { emails, emailSubject, emailMessage } = ctx.request.body;
+      const { emails, subject, emailSubject, message, emailMessage } = ctx.request.body;
+      
+      // Support both naming conventions
+      const finalSubject = subject || emailSubject;
+      const finalMessage = message || emailMessage;
 
       if (!emails || !Array.isArray(emails) || emails.length === 0) {
+        console.log('Invalid emails array:', emails);
         return ctx.badRequest('Email array is required');
       }
 
-      if (!emailSubject || !emailMessage) {
+      if (!finalSubject || !finalMessage) {
+        console.log('Missing subject or message');
         return ctx.badRequest('Email subject and message are required');
       }
 
@@ -345,29 +355,61 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           // Generate unique access code with VOL- prefix
           const accessCode = `VOL-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
 
+          // Try to find existing user with this email
+          let user = await strapi.query('plugin::users-permissions.user').findOne({
+            where: { email: email }
+          });
+
+          // If no user exists, create a basic volunteer user
+          if (!user) {
+            user = await strapi.entityService.create('plugin::users-permissions.user', {
+              data: {
+                username: email,
+                email: email,
+                first_name: 'Volunteer',
+                last_name: '', // Leave last name empty for volunteers
+                provider: 'local',
+                confirmed: true,
+                blocked: false,
+                role: 1 // Default public role
+              }
+            });
+          }
+
           // Create volunteer "order"
           const volunteerOrder = await strapi.entityService.create('api::order.order', {
             data: {
+              users_permissions_user: user.id, // Associate with user
               total_amount: 0,
-              status: 'completed',
+              status: 'pending',
               stripe_payment_id: `volunteer_${Date.now()}_${Math.random().toString(36).substring(7)}`,
               dvd_count: 0,
               digital_download_count: 1,
               media_type: 'digital',
               media_status: 'fulfilled',
               access_code: accessCode,
-              volunteer_email: email,
-              is_volunteer: true,
+              media_notes: `Volunteer access created for: ${email}`,
             }
           });
+
+          // Personalize the message with the user's name
+          const userName = user.first_name && user.first_name !== 'Volunteer' 
+            ? `${user.first_name} ${user.last_name || ''}`.trim()
+            : 'Volunteer'; // Just use "Volunteer" for new volunteer accounts
+          
+          // Replace generic greeting with personalized one
+          const personalizedMessage = finalMessage.replace(
+            /Dear Volunteer,?/gi, 
+            `Dear ${userName},`
+          );
 
           // Send email with access code
           const emailData = {
             from: process.env.MAIL_FROM_ADDRESS,
             to: email,
-            subject: emailSubject,
+            subject: finalSubject,
             html: `
-              ${emailMessage}
+              ${personalizedMessage}
               
               <p><strong>Your Access Code:</strong> ${accessCode}</p>
               

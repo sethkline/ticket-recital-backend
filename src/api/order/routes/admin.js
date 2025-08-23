@@ -50,10 +50,8 @@ module.exports = {
       "path": "/orders/create-volunteer-access",
       "handler": "admin.createVolunteerAccess",
       "config": {
-        "auth": {
-          "strategy": "jwt"
-        },
-        "policies": []
+        "policies": [],
+        "middlewares": []
       }
     }
   ]

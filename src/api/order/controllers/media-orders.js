@@ -163,15 +163,23 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
       }
 
       const userEmail = order.users_permissions_user.email;
+      
+      // Get customer name
+      const customerName = order.users_permissions_user.first_name && order.users_permissions_user.last_name
+        ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
+        : order.users_permissions_user.first_name || order.users_permissions_user.last_name || 'Valued Customer';
 
-      // Prepare email content
-      let emailMessage = message;
+      // Prepare email content and replace placeholders
+      let emailMessage = message.replace(/{name}/g, customerName);
+      
+      // Replace {accessCode} placeholder if access code exists
+      if (order.access_code) {
+        emailMessage = emailMessage.replace(/{accessCode}/g, order.access_code);
+      }
 
-      // Include access code if requested and available
-      if (includeAccessCode && order.access_code) {
-        if (!emailMessage.includes(order.access_code)) {
-          emailMessage += `\n\nYour access code is: ${order.access_code}`;
-        }
+      // Include access code if requested and available (for backwards compatibility)
+      if (includeAccessCode && order.access_code && !emailMessage.includes(order.access_code)) {
+        emailMessage += `\n\nYour access code is: ${order.access_code}`;
 
         // Mark access code as emailed
         await strapi.entityService.update('api::order.order', orderId, {
@@ -243,14 +251,17 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
           return null;
         }
 
-        // Prepare email content
-        let emailMessage = message;
+        // Get customer name
+        const customerName = order.users_permissions_user.first_name && order.users_permissions_user.last_name
+          ? `${order.users_permissions_user.first_name} ${order.users_permissions_user.last_name}`
+          : order.users_permissions_user.first_name || order.users_permissions_user.last_name || 'Valued Customer';
 
-        // Include access code if this is a digital order and has an access code
+        // Prepare email content and replace placeholders
+        let emailMessage = message.replace(/{name}/g, customerName);
+        
+        // Replace {accessCode} placeholder if this is a digital order
         if (targetOrders === 'digital' && order.access_code) {
-          if (!emailMessage.includes('access code')) {
-            emailMessage += `\n\nYour access code is: ${order.access_code}`;
-          }
+          emailMessage = emailMessage.replace(/{accessCode}/g, order.access_code);
 
           // Mark access code as emailed
           await strapi.entityService.update('api::order.order', order.id, {
