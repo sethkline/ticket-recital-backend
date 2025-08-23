@@ -310,6 +310,96 @@ module.exports = createCoreController('api::order.order', ({ strapi }) => ({
     } catch (err) {
       ctx.throw(500, err);
     }
+  },
+
+  async createVolunteerAccess(ctx) {
+    try {
+      // Check admin permission
+      if (!ctx.state.user || ctx.state.user.role.type !== 'admin') {
+        return ctx.forbidden('Admin access required');
+      }
+
+      const { emails, emailSubject, emailMessage } = ctx.request.body;
+
+      if (!emails || !Array.isArray(emails) || emails.length === 0) {
+        return ctx.badRequest('Email array is required');
+      }
+
+      if (!emailSubject || !emailMessage) {
+        return ctx.badRequest('Email subject and message are required');
+      }
+
+      const createdVolunteers = [];
+      const mailgun = require('mailgun-js')({
+        apiKey: process.env.MAILGUN_API_KEY,
+        domain: process.env.MAILGUN_DOMAIN
+      });
+
+      // Process each email
+      for (const email of emails) {
+        if (!email || !email.includes('@')) {
+          continue; // Skip invalid emails
+        }
+
+        try {
+          // Generate unique access code with VOL- prefix
+          const accessCode = `VOL-${new Date().getFullYear()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
+          // Create volunteer "order"
+          const volunteerOrder = await strapi.entityService.create('api::order.order', {
+            data: {
+              total_amount: 0,
+              status: 'completed',
+              stripe_payment_id: `volunteer_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+              dvd_count: 0,
+              digital_download_count: 1,
+              media_type: 'digital',
+              media_status: 'fulfilled',
+              access_code: accessCode,
+              volunteer_email: email,
+              is_volunteer: true,
+            }
+          });
+
+          // Send email with access code
+          const emailData = {
+            from: process.env.MAIL_FROM_ADDRESS,
+            to: email,
+            subject: emailSubject,
+            html: `
+              ${emailMessage}
+              
+              <p><strong>Your Access Code:</strong> ${accessCode}</p>
+              
+              <p>Visit <a href="${process.env.FRONTEND_URL || 'https://recital.reverence.dance'}/watch-recital">our viewing page</a> and enter your access code to watch or download the recital.</p>
+            `
+          };
+
+          await mailgun.messages().send(emailData);
+
+          createdVolunteers.push({
+            email: email,
+            accessCode: accessCode,
+            orderId: volunteerOrder.id
+          });
+
+        } catch (emailError) {
+          console.error(`Error processing volunteer email ${email}:`, emailError);
+          // Continue processing other emails even if one fails
+        }
+      }
+
+      return ctx.send({
+        message: `Created ${createdVolunteers.length} volunteer access codes`,
+        volunteers: createdVolunteers,
+        totalRequested: emails.length,
+        successCount: createdVolunteers.length
+      });
+
+    } catch (error) {
+      console.error('Error creating volunteer access:', error);
+      return ctx.internalServerError('Failed to create volunteer access');
+    }
   }
 }));
 
