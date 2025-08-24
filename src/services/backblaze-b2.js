@@ -1,19 +1,7 @@
-const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
-
 class BackblazeB2Service {
   constructor() {
-    this.client = new S3Client({
-      endpoint: process.env.B2_ENDPOINT,
-      region: process.env.B2_REGION,
-      credentials: {
-        accessKeyId: process.env.B2_KEY_ID,
-        secretAccessKey: process.env.B2_APPLICATION_KEY,
-      },
-    });
-    
     this.bucketName = process.env.B2_BUCKET_NAME;
-    this.urlExpiry = parseInt(process.env.SIGNED_URL_EXPIRY) || 86400;
+    console.log('B2 public service initialized for bucket:', this.bucketName);
   }
 
   /**
@@ -24,18 +12,12 @@ class BackblazeB2Service {
    */
   async getSignedUrl(filePath, expirySeconds = null) {
     try {
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: filePath,
-      });
-
-      const url = await getSignedUrl(this.client, command, {
-        expiresIn: expirySeconds || this.urlExpiry,
-      });
-
+      // Since bucket is now public, return direct URL
+      const url = `https://f000.backblazeb2.com/file/${this.bucketName}/${filePath}`;
+      console.log('Generated public B2 URL for:', filePath);
       return url;
     } catch (error) {
-      console.error('Error generating signed URL:', error);
+      console.error('Error generating public URL:', error);
       throw new Error('Failed to generate download link');
     }
   }
