@@ -989,6 +989,118 @@ export interface ApiOrderOrder extends Schema.CollectionType {
   };
 }
 
+export interface ApiPaymentLinkPaymentLink extends Schema.CollectionType {
+  collectionName: 'payment_links';
+  info: {
+    singularName: 'payment-link';
+    pluralName: 'payment-links';
+    displayName: 'Payment Link';
+    description: 'Payment links for self-service digital download purchases';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    token: Attribute.String & Attribute.Required & Attribute.Unique;
+    customer_email: Attribute.Email & Attribute.Required;
+    customer_name: Attribute.String & Attribute.Required;
+    customer_phone: Attribute.String;
+    amount: Attribute.Decimal & Attribute.Required & Attribute.DefaultTo<20>;
+    status: Attribute.Enumeration<
+      ['pending', 'processing', 'completed', 'expired', 'failed']
+    > &
+      Attribute.Required &
+      Attribute.DefaultTo<'pending'>;
+    expires_at: Attribute.DateTime & Attribute.Required;
+    last_accessed: Attribute.DateTime;
+    completed_at: Attribute.DateTime;
+    order: Attribute.Relation<
+      'api::payment-link.payment-link',
+      'oneToOne',
+      'api::order.order'
+    >;
+    stripe_payment_intent_id: Attribute.String;
+    stripe_session_id: Attribute.String;
+    metadata: Attribute.JSON;
+    custom_message: Attribute.Text;
+    ip_address: Attribute.String;
+    user_agent: Attribute.Text;
+    created_by_admin: Attribute.Relation<
+      'api::payment-link.payment-link',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    access_logs: Attribute.Relation<
+      'api::payment-link.payment-link',
+      'oneToMany',
+      'api::payment-link-access-log.payment-link-access-log'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::payment-link.payment-link',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::payment-link.payment-link',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiPaymentLinkAccessLogPaymentLinkAccessLog
+  extends Schema.CollectionType {
+  collectionName: 'payment_link_access_logs';
+  info: {
+    singularName: 'payment-link-access-log';
+    pluralName: 'payment-link-access-logs';
+    displayName: 'Payment Link Access Log';
+    description: 'Audit log for payment link access and actions';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    payment_link: Attribute.Relation<
+      'api::payment-link-access-log.payment-link-access-log',
+      'manyToOne',
+      'api::payment-link.payment-link'
+    >;
+    accessed_at: Attribute.DateTime & Attribute.Required;
+    ip_address: Attribute.String;
+    user_agent: Attribute.Text;
+    action: Attribute.Enumeration<
+      [
+        'viewed',
+        'payment_attempted',
+        'payment_succeeded',
+        'payment_failed',
+        'expired'
+      ]
+    > &
+      Attribute.Required;
+    details: Attribute.JSON;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::payment-link-access-log.payment-link-access-log',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::payment-link-access-log.payment-link-access-log',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiRecitalRecital extends Schema.CollectionType {
   collectionName: 'recitals';
   info: {
@@ -1276,6 +1388,8 @@ declare module '@strapi/types' {
       'api::early-access-phrase.early-access-phrase': ApiEarlyAccessPhraseEarlyAccessPhrase;
       'api::event.event': ApiEventEvent;
       'api::order.order': ApiOrderOrder;
+      'api::payment-link.payment-link': ApiPaymentLinkPaymentLink;
+      'api::payment-link-access-log.payment-link-access-log': ApiPaymentLinkAccessLogPaymentLinkAccessLog;
       'api::recital.recital': ApiRecitalRecital;
       'api::seat.seat': ApiSeatSeat;
       'api::studio.studio': ApiStudioStudio;

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Digital Download Purchase Link</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f4;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 20px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0 0 10px 0;
+      font-size: 28px;
+      font-weight: 300;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 400;
+      opacity: 0.9;
+    }
+    .content {
+      padding: 30px 20px;
+      background: #fff;
+    }
+    .greeting {
+      font-size: 18px;
+      margin-bottom: 20px;
+      color: #2d3748;
+    }
+    .custom-message {
+      background: #ebf8ff;
+      border-left: 4px solid #3182ce;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 0 5px 5px 0;
+    }
+    .price-section {
+      text-align: center;
+      margin: 30px 0;
+      padding: 20px;
+      background: #f7fafc;
+      border-radius: 10px;
+    }
+    .price {
+      font-size: 36px;
+      font-weight: bold;
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+    .button {
+      display: inline-block;
+      padding: 15px 40px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 16px;
+      transition: transform 0.2s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+    }
+    .features {
+      margin: 30px 0;
+    }
+    .features h3 {
+      color: #2d3748;
+      font-size: 18px;
+      margin-bottom: 15px;
+    }
+    .features ul {
+      list-style: none;
+      padding: 0;
+    }
+    .features li {
+      padding: 8px 0;
+      position: relative;
+      padding-left: 25px;
+    }
+    .features li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: #48bb78;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .expiry-notice {
+      background: #fed7d7;
+      border: 1px solid #fc8181;
+      color: #c53030;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 25px 0;
+      text-align: center;
+      font-weight: 600;
+    }
+    .footer {
+      padding: 20px;
+      text-align: center;
+      background: #edf2f7;
+      color: #718096;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .footer p {
+      margin: 5px 0;
+    }
+    .contact-info {
+      margin: 25px 0;
+      padding: 15px;
+      background: #f0fff4;
+      border-radius: 8px;
+      border-left: 4px solid #48bb78;
+    }
+    @media only screen and (max-width: 600px) {
+      .container {
+        margin: 10px;
+      }
+      .header h1 {
+        font-size: 24px;
+      }
+      .price {
+        font-size: 28px;
+      }
+      .button {
+        padding: 12px 30px;
+        font-size: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Reverence Studios</h1>
+      <h2>Your Digital Download Purchase Link</h2>
+    </div>
+    
+    <div class="content">
+      <div class="greeting">
+        Dear {{customerName}},
+      </div>
+      
+      {{#if customMessage}}
+      <div class="custom-message">
+        {{customMessage}}
+      </div>
+      {{/if}}
+      
+      <p>You're invited to purchase the digital download of our recital performance. This exclusive access will allow you to relive the beautiful moments from our show.</p>
+      
+      <div class="price-section">
+        <div class="price">${{amount}}</div>
+        <a href="{{paymentUrl}}" class="button">Complete Your Purchase</a>
+      </div>
+      
+      <div class="features">
+        <h3>What you'll receive:</h3>
+        <ul>
+          <li>Instant access to the full recital recording</li>
+          <li>High-quality video download (multiple formats available)</li>
+          <li>Access to individual dance performances</li>
+          <li>Access code valid until December 31, 2025</li>
+          <li>Unlimited downloads and streaming</li>
+        </ul>
+      </div>
+      
+      <div class="expiry-notice">
+        ⏰ Important: This link will expire on {{expiryDate}}
+      </div>
+      
+      <div class="contact-info">
+        <strong>Need help?</strong><br>
+        If you have any questions or issues with your purchase, please don't hesitate to contact us at {{supportEmail}}
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>© {{currentYear}} Reverence Studios. All rights reserved.</p>
+      <p>This is a one-time purchase link specifically created for you.</p>
+      <p>Please do not share this link with others.</p>
+    </div>
+  </div>
+</body>
+</html>

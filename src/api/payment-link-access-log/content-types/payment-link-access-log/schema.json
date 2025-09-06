@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payment_link_access_logs",
+  "info": {
+    "singularName": "payment-link-access-log",
+    "pluralName": "payment-link-access-logs",
+    "displayName": "Payment Link Access Log",
+    "description": "Audit log for payment link access and actions"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "payment_link": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::payment-link.payment-link",
+      "inversedBy": "access_logs"
+    },
+    "accessed_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "text"
+    },
+    "action": {
+      "type": "enumeration",
+      "enum": ["viewed", "payment_attempted", "payment_succeeded", "payment_failed", "expired"],
+      "required": true
+    },
+    "details": {
+      "type": "json"
+    }
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payment_links",
+  "info": {
+    "singularName": "payment-link",
+    "pluralName": "payment-links",
+    "displayName": "Payment Link",
+    "description": "Payment links for self-service digital download purchases"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "token": {
+      "type": "string",
+      "unique": true,
+      "required": true,
+      "private": false
+    },
+    "customer_email": {
+      "type": "email",
+      "required": true
+    },
+    "customer_name": {
+      "type": "string",
+      "required": true
+    },
+    "customer_phone": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "decimal",
+      "default": 20.00,
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "processing", "completed", "expired", "failed"],
+      "default": "pending",
+      "required": true
+    },
+    "expires_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "last_accessed": {
+      "type": "datetime"
+    },
+    "completed_at": {
+      "type": "datetime"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::order.order"
+    },
+    "stripe_payment_intent_id": {
+      "type": "string"
+    },
+    "stripe_session_id": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "custom_message": {
+      "type": "text"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "text"
+    },
+    "created_by_admin": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "access_logs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment-link-access-log.payment-link-access-log",
+      "mappedBy": "payment_link"
+    }
+  }
+}
