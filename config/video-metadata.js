@@ -364,6 +364,15 @@ module.exports = {
         fileSize: "87.9MB",
         performers: "Worship Dance",
         order: 38
+      },
+      {
+        id: 39,
+        title: "A Million Dreams",
+        category: "Tuesday Ballet 1",
+        filePath: "recital-2025/dances/tuesday-ballet-1__a-million-dreams_encoded.mp4",
+        fileSize: "68.6MB",
+        performers: "Tuesday Ballet 1",
+        order: 39
       }
     ]
   }
